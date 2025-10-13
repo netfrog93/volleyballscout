@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import io
 import os
-import openpyxl
 
 st.set_page_config(page_title="Volley Scout", layout="wide")
 
@@ -17,7 +16,8 @@ ACTION_CODES = {
     "Muro": ["Punto", "Errore"]
 }
 
-ROSTER_FILE = "roster.xlsx"
+# Percorso sicuro per Streamlit Cloud
+ROSTER_FILE = os.path.join(os.path.dirname(__file__), "roster.xlsx")
 
 # --- Caricamento roster ---
 if "players" not in st.session_state:
@@ -92,15 +92,12 @@ def update_score():
         action = row["Azione"]
         code = row["Codice"]
 
-        # Punti dai fondamentali
         if action in ["Attacco","Battuta","Muro"]:
             if code=="Punto":
                 score[team]+=1
             elif code=="Errore":
                 other = "B" if team=="A" else "A"
                 score[other]+=1
-
-        # Eventi generali
         elif action=="Errore avversario":
             score["A"]+=1
         elif action in ["Punto avversario","Errore squadra"]:
@@ -109,12 +106,13 @@ def update_score():
 
 update_score()
 
-# --- Punteggio totale in evidenza ---
+# --- Punteggio ---
 st.markdown("## Punteggio attuale 🏐")
 cols_score = st.columns(2)
 cols_score[0].metric(st.session_state.team_names["A"], st.session_state.score["A"])
 cols_score[1].metric(st.session_state.team_names["B"], st.session_state.score["B"])
 
+# --- Inserimento eventi ---
 st.header("Inserisci evento")
 
 if st.session_state.field_players:
@@ -136,7 +134,7 @@ if st.session_state.field_players:
                 code_cols = st.columns(len(codes), gap="small")
                 for j, code in enumerate(codes):
                     if code_cols[j].button(code, key=f"{st.session_state.selected_player}_{action}_{code}"):
-                        team = "A" if st.session_state.selected_player in st.session_state.field_players[:6] else "B"
+                        team = "A"  # I giocatori sono sempre Team A
                         new_row = {
                             "Set": st.session_state.current_set,
                             "PointNo": len(st.session_state.raw)+1,
@@ -152,7 +150,6 @@ if st.session_state.field_players:
                             rotate_team()
                         del st.session_state.selected_player
                         st.experimental_rerun()
-
 
 # --- Eventi generali ---
 st.subheader("Eventi generali")
@@ -203,7 +200,7 @@ if not st.session_state.raw.empty:
             update_score()
             st.experimental_rerun()
 
-# --- Tabellini e riepilogo ---
+# --- Tabellini ---
 def compute_counts(df_raw):
     players = st.session_state.players["Nome"].tolist()
     columns = []
@@ -233,11 +230,14 @@ st.header("Esporta")
 def to_excel_bytes(tabellino, raw_data):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        tabellino.to_excel(writer, index=False)
-        # se vuoi puoi scrivere anche raw_data in un altro sheet
-        # raw_data.to_excel(writer, sheet_name="Raw", index=False)
+        tabellino.to_excel(writer, sheet_name="Tabellino", index=False)
+        raw_data.to_excel(writer, sheet_name="Raw", index=False)
     return output.getvalue()
 
 excel_data = to_excel_bytes(tabellino, st.session_state.raw)
-st.download_button("Scarica Excel (.xlsx)", data=excel_data, file_name="Volley_Scout_Report.xlsx",
-                   mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+st.download_button(
+    "Scarica Excel (.xlsx)", 
+    data=excel_data, 
+    file_name="Volley_Scout_Report.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
