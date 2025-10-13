@@ -239,41 +239,6 @@ if st.session_state.field_players:
 else:
     st.info("Seleziona i 7 giocatori nella sidebar per iniziare.")
 
-extra_cols = st.columns(3, gap="small")
-if extra_cols[0].button("Errore avversario", use_container_width=True):
-    st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
-        "Set": st.session_state.current_set,
-        "PointNo": 0,
-        "Team": "A",
-        "Giocatore": "Evento Generale",
-        "Azione": "Errore avversario",
-        "Codice": "",
-        "Note": ""
-    }])], ignore_index=True)
-    update_score()
-if extra_cols[1].button("Punto avversario", use_container_width=True):
-    st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
-        "Set": st.session_state.current_set,
-        "PointNo": 0,
-        "Team": "B",
-        "Giocatore": "Evento Generale",
-        "Azione": "Punto avversario",
-        "Codice": "",
-        "Note": ""
-    }])], ignore_index=True)
-    update_score()
-if extra_cols[2].button("Errore squadra", use_container_width=True):
-    st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
-        "Set": st.session_state.current_set,
-        "PointNo": 0,
-        "Team": "B",
-        "Giocatore": "Evento Generale",
-        "Azione": "Errore squadra",
-        "Codice": "",
-        "Note": ""
-    }])], ignore_index=True)
-    update_score()
-
 # --- STEP 2: scelta fondamentale (una riga) ---
 if st.session_state.selected_player and not st.session_state.selected_action:
     st.markdown("---")
@@ -313,8 +278,41 @@ if st.session_state.selected_player and st.session_state.selected_action:
 # =======================
 # Eventi generali
 # =======================
-#st.subheader("Eventi generali")
-
+st.subheader("Eventi generali")
+extra_cols = st.columns(3, gap="small")
+if extra_cols[0].button("Errore avversario", use_container_width=True):
+    st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
+        "Set": st.session_state.current_set,
+        "PointNo": 0,
+        "Team": "A",
+        "Giocatore": "Evento Generale",
+        "Azione": "Errore avversario",
+        "Codice": "",
+        "Note": ""
+    }])], ignore_index=True)
+    update_score()
+if extra_cols[1].button("Punto avversario", use_container_width=True):
+    st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
+        "Set": st.session_state.current_set,
+        "PointNo": 0,
+        "Team": "B",
+        "Giocatore": "Evento Generale",
+        "Azione": "Punto avversario",
+        "Codice": "",
+        "Note": ""
+    }])], ignore_index=True)
+    update_score()
+if extra_cols[2].button("Errore squadra", use_container_width=True):
+    st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
+        "Set": st.session_state.current_set,
+        "PointNo": 0,
+        "Team": "B",
+        "Giocatore": "Evento Generale",
+        "Azione": "Errore squadra",
+        "Codice": "",
+        "Note": ""
+    }])], ignore_index=True)
+    update_score()
 
 # =======================
 # Eventi registrati
