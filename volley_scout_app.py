@@ -118,37 +118,41 @@ st.header("Inserisci evento")
 if st.session_state.field_players:
     player_cols = st.columns([2,3], gap="small")
     
+    # Colonna dei giocatori
     with player_cols[0]:
         st.subheader("Giocatori")
         for gp in st.session_state.field_players:
             if st.button(gp, key=f"player_{gp}"):
                 st.session_state.selected_player = gp
-                if "selected_score" in st.session_state:
-                    del st.session_state.selected_score
-    
+
+    # Colonna dei punteggi
     with player_cols[1]:
         st.subheader("Score")
-        if "selected_player" in st.session_state:
+        selected_player = st.session_state.get("selected_player", None)
+        if selected_player:
             for action, codes in ACTION_CODES.items():
                 st.markdown(f"**{action}**")
                 code_cols = st.columns(len(codes), gap="small")
                 for j, code in enumerate(codes):
-                    if code_cols[j].button(code, key=f"{st.session_state.selected_player}_{action}_{code}"):
-                        team = "A"  # I giocatori sono sempre Team A
+                    if code_cols[j].button(code, key=f"{selected_player}_{action}_{code}"):
+                        # Sempre Team A
+                        team = "A"
                         new_row = {
                             "Set": st.session_state.current_set,
                             "PointNo": len(st.session_state.raw)+1,
                             "Team": team,
-                            "Giocatore": st.session_state.selected_player,
+                            "Giocatore": selected_player,
                             "Azione": action,
                             "Codice": code,
                             "Note": ""
                         }
+                        # Aggiorna la sessione
                         st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
                         update_score()
                         if action in ["Attacco","Battuta","Muro"] and code=="Punto" and team=="A":
                             rotate_team()
-                        del st.session_state.selected_player
+                        # Imposta a None invece di cancellare la chiave
+                        st.session_state.selected_player = None
                         st.experimental_rerun()
 
 # --- Eventi generali ---
