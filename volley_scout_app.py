@@ -104,37 +104,63 @@ st.metric(st.session_state.team_names["B"], st.session_state.score["B"])
 
 # --- Giocatori e fondamentali ---
 st.subheader("Giocatori e Score")
-for gp in st.session_state.field_players:
-    cols = st.columns([2,5])
-    with cols[0]:
-        if st.button(gp, key=f"player_{gp}"):
-            # Toggle menu fondamentali
-            if st.session_state.selected_player == gp:
-                st.session_state.selected_player = None
-            else:
-                st.session_state.selected_player = gp
 
-    if st.session_state.selected_player == gp:
-        with cols[1]:
-            for action, codes in ACTION_CODES.items():
-                st.markdown(f"**{action}**")
-                code_cols = st.columns(len(codes))
-                for j, code in enumerate(codes):
-                    if code_cols[j].button(code, key=f"{gp}_{action}_{code}", use_container_width=True):
-                        new_row = {
-                            "Set": st.session_state.current_set,
-                            "PointNo": len(st.session_state.raw)+1,
-                            "Team": "A",
-                            "Giocatore": gp,
-                            "Azione": action,
-                            "Codice": code,
-                            "Note": ""
-                        }
-                        st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
-                        update_score()
-                        if action in ["Attacco","Battuta","Muro"] and code=="Punto":
-                            rotate_team()
-                        st.session_state.selected_player = None  # Chiude il menu fondamentali
+for gp in st.session_state.field_players:
+    st.write(f"**{gp}**")
+    if st.button(f"Seleziona {gp}", key=f"player_{gp}"):
+        # Toggle per il giocatore selezionato
+        if st.session_state.selected_player == gp:
+            st.session_state.selected_player = None
+        else:
+            st.session_state.selected_player = gp
+            st.session_state.selected_action = None
+            st.session_state.selected_code = None
+
+# Mostra menu a tendina solo se c’è un giocatore selezionato
+if st.session_state.selected_player:
+    gp = st.session_state.selected_player
+    
+    # Seleziona fondamentale
+    action = st.selectbox(
+        "Seleziona fondamentale",
+        list(ACTION_CODES.keys()),
+        key=f"action_{gp}"
+    )
+    st.session_state.selected_action = action
+    
+    if action:
+        # Seleziona codice relativo al fondamentale
+        code = st.selectbox(
+            "Seleziona risultato",
+            ACTION_CODES[action],
+            key=f"code_{gp}"
+        )
+        st.session_state.selected_code = code
+        
+        if code:
+            # Registra evento
+            new_row = {
+                "Set": st.session_state.current_set,
+                "PointNo": len(st.session_state.raw)+1,
+                "Team": "A",
+                "Giocatore": gp,
+                "Azione": action,
+                "Codice": code,
+                "Note": ""
+            }
+            st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
+            
+            # Aggiorna punteggio
+            update_score()
+            
+            # Rotazione se necessario
+            if action in ["Attacco","Battuta","Muro"] and code=="Punto":
+                rotate_team()
+            
+            # Reset menu
+            st.session_state.selected_player = None
+            st.session_state.selected_action = None
+            st.session_state.selected_code = None
 
 # --- Eventi generali ---
 st.subheader("Eventi generali")
