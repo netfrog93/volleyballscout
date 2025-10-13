@@ -40,8 +40,10 @@ if "team_names" not in st.session_state:
     st.session_state.team_names = {"A":"Team A","B":"Team B"}
 if "score" not in st.session_state:
     st.session_state.score = {"A":0,"B":0}
+if "selected_player" not in st.session_state:
+    st.session_state.selected_player = None
 
-# --- Input principali nella main page (mobile friendly) ---
+# --- Input principali nella main page (mobile-friendly) ---
 st.subheader("Nome squadre")
 team_a = st.text_input("Nome squadra A", value=st.session_state.team_names["A"])
 team_b = st.text_input("Nome squadra B", value=st.session_state.team_names["B"])
@@ -62,7 +64,7 @@ if len(options) == 7:
 elif len(options) > 0:
     st.warning("Seleziona esattamente 7 giocatori")
 
-# --- Sostituzioni e rotazioni in expander ---
+# --- Sostituzioni e rotazioni ---
 with st.expander("Sostituzioni / Rotazioni"):
     if st.session_state.field_players:
         out_player = st.selectbox("Chi esce?", st.session_state.field_players)
@@ -77,8 +79,7 @@ with st.expander("Sostituzioni / Rotazioni"):
 
     if st.button("Ruota squadra"):
         court_players = st.session_state.field_players[:6]
-        rotated = [court_players[-1]] + court_players[:-1]
-        st.session_state.field_players[:6] = rotated
+        st.session_state.field_players[:6] = [court_players[-1]] + court_players[:-1]
 
 # --- Calcolo punteggio ---
 def update_score():
@@ -92,8 +93,7 @@ def update_score():
             if code=="Punto":
                 score[team]+=1
             elif code=="Errore":
-                other = "B" if team=="A" else "A"
-                score[other]+=1
+                score["B" if team=="A" else "A"]+=1
         elif action=="Errore avversario":
             score["A"]+=1
         elif action in ["Punto avversario","Errore squadra"]:
@@ -107,39 +107,40 @@ st.markdown("## Punteggio attuale 🏐")
 st.metric(st.session_state.team_names["A"], st.session_state.score["A"])
 st.metric(st.session_state.team_names["B"], st.session_state.score["B"])
 
-# --- Inserimento eventi (verticale, mobile-friendly) ---
-st.subheader("Inserisci evento")
-selected_player = st.session_state.get("selected_player", None)
+# --- Giocatori e Score (mobile + codici in riga) ---
+st.subheader("Giocatori e Score")
 
-st.markdown("### Giocatori")
-if st.session_state.field_players:
-    for gp in st.session_state.field_players:
+for gp in st.session_state.field_players:
+    cols = st.columns([2,5])  # nome giocatore a sinistra, fondamentali a destra
+    with cols[0]:
         if st.button(gp, key=f"player_{gp}"):
             st.session_state.selected_player = gp
-            selected_player = gp
 
-st.markdown("### Score")
-if selected_player:
-    for action, codes in ACTION_CODES.items():
-        st.markdown(f"**{action}**")
-        for code in codes:
-            if st.button(code, key=f"{selected_player}_{action}_{code}"):
-                team = "A"
-                new_row = {
-                    "Set": st.session_state.current_set,
-                    "PointNo": len(st.session_state.raw)+1,
-                    "Team": team,
-                    "Giocatore": selected_player,
-                    "Azione": action,
-                    "Codice": code,
-                    "Note": ""
-                }
-                st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
-                update_score()
-                if action in ["Attacco","Battuta","Muro"] and code=="Punto":
-                    court_players = st.session_state.field_players[:6]
-                    st.session_state.field_players[:6] = [court_players[-1]] + court_players[:-1]
-                st.session_state.selected_player = None
+    if st.session_state.selected_player == gp:
+        with cols[1]:
+            for action, codes in ACTION_CODES.items():
+                st.markdown(f"**{action}**")
+                code_cols = st.columns(len(codes))
+                for j, code in enumerate(codes):
+                    if code_cols[j].button(code, key=f"{gp}_{action}_{code}"):
+                        team = "A"
+                        new_row = {
+                            "Set": st.session_state.current_set,
+                            "PointNo": len(st.session_state.raw)+1,
+                            "Team": team,
+                            "Giocatore": gp,
+                            "Azione": action,
+                            "Codice": code,
+                            "Note": ""
+                        }
+                        st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
+                        update_score()
+
+                        if action in ["Attacco","Battuta","Muro"] and code=="Punto":
+                            court_players = st.session_state.field_players[:6]
+                            st.session_state.field_players[:6] = [court_players[-1]] + court_players[:-1]
+
+                        st.session_state.selected_player = None
 
 # --- Eventi generali ---
 st.subheader("Eventi generali")
