@@ -139,16 +139,34 @@ available_players = st.session_state.players["Nome"].tolist()
 used = [p for p in st.session_state.positions.values() if p]
 
 for pos in range(1, 7):
+    current_player = st.session_state.positions[pos]
+    valid_options = [""] + [p for p in available_players if p not in used or p == current_player]
+    # Evita errori se il giocatore non è nel roster
+    if current_player in available_players:
+        index_value = valid_options.index(current_player)
+    else:
+        index_value = 0
+        st.session_state.positions[pos] = ""
     st.session_state.positions[pos] = st.sidebar.selectbox(
         f"Posizione {pos}",
-        [""] + [p for p in available_players if p not in used or p == st.session_state.positions[pos]],
-        index=0 if not st.session_state.positions[pos] else available_players.index(st.session_state.positions[pos]) + 1
+        valid_options,
+        index=index_value,
+        key=f"pos_{pos}"
     )
 
+# Libero
+current_libero = st.session_state.positions["Libero"]
+valid_libero_options = [""] + [p for p in available_players if p not in used or p == current_libero]
+if current_libero in available_players:
+    libero_index = valid_libero_options.index(current_libero)
+else:
+    libero_index = 0
+    st.session_state.positions["Libero"] = ""
 st.session_state.positions["Libero"] = st.sidebar.selectbox(
     "Libero",
-    [""] + [p for p in available_players if p not in used or p == st.session_state.positions["Libero"]],
-    index=0 if not st.session_state.positions["Libero"] else available_players.index(st.session_state.positions["Libero"]) + 1
+    valid_libero_options,
+    index=libero_index,
+    key="pos_libero"
 )
 
 # Verifica formazione
