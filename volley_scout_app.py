@@ -236,8 +236,12 @@ if all(v not in [None, ""] for v in st.session_state.positions.values()):
 
     libero = st.session_state.positions["Libero"]
     if libero:
-        st.info(f"Libero: {libero}")
-
+        st.markdown("---")
+        st.subheader("Libero (fisso)")
+        if st.button(f"Libero: {libero}", key=f"player_libero", use_container_width=True):
+            st.session_state.selected_player = libero
+            st.session_state.selected_action = None
+            safe_rerun()
 else:
     st.info("Imposta tutti i giocatori nelle posizioni per iniziare.")
 
