@@ -253,10 +253,10 @@ if st.session_state.selected_player and not st.session_state.selected_action:
         if cols_actions[i].button(action, key=f"action_{st.session_state.selected_player}_{action}", use_container_width=True):
             st.session_state.selected_action = action
             safe_rerun()
-    if st.button("⬅️ Cambia giocatore", key="back_players", type="secondary"):
-        st.session_state.selected_player = None
-        st.session_state.selected_action = None
-        safe_rerun()
+    #if st.button("⬅️ Cambia giocatore", key="back_players", type="secondary"):
+    #    st.session_state.selected_player = None
+    #    st.session_state.selected_action = None
+    #    safe_rerun()
 
 # --- Scelta esito ---
 if st.session_state.selected_player and st.session_state.selected_action:
