@@ -118,14 +118,12 @@ st.header("Inserisci evento")
 if st.session_state.field_players:
     player_cols = st.columns([2,3], gap="small")
     
-    # Colonna dei giocatori
     with player_cols[0]:
         st.subheader("Giocatori")
         for gp in st.session_state.field_players:
             if st.button(gp, key=f"player_{gp}"):
                 st.session_state.selected_player = gp
 
-    # Colonna dei punteggi
     with player_cols[1]:
         st.subheader("Score")
         selected_player = st.session_state.get("selected_player", None)
@@ -135,7 +133,6 @@ if st.session_state.field_players:
                 code_cols = st.columns(len(codes), gap="small")
                 for j, code in enumerate(codes):
                     if code_cols[j].button(code, key=f"{selected_player}_{action}_{code}"):
-                        # Sempre Team A
                         team = "A"
                         new_row = {
                             "Set": st.session_state.current_set,
@@ -146,14 +143,13 @@ if st.session_state.field_players:
                             "Codice": code,
                             "Note": ""
                         }
-                        # Aggiorna la sessione
                         st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
                         update_score()
-                        if action in ["Attacco","Battuta","Muro"] and code=="Punto" and team=="A":
+                        if action in ["Attacco","Battuta","Muro"] and code=="Punto":
                             rotate_team()
-                        # Imposta a None invece di cancellare la chiave
+                        # Imposta a None invece di cancellare
                         st.session_state.selected_player = None
-                        st.experimental_rerun()
+                        # Nessun st.experimental_rerun()
 
 # --- Eventi generali ---
 st.subheader("Eventi generali")
