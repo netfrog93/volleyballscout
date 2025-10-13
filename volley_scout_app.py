@@ -73,20 +73,20 @@ if not st.session_state.setup_done:
     st.subheader("Setup Partita")
 
     # Nomi squadre
-    team_a = st.text_input("Nome squadra A", value=st.session_state.team_names["A"])
-    team_b = st.text_input("Nome squadra B", value=st.session_state.team_names["B"])
+    team_a = st.text_input("Nome squadra A", value=st.session_state.team_names["A"], key="team_a")
+    team_b = st.text_input("Nome squadra B", value=st.session_state.team_names["B"], key="team_b")
     st.session_state.team_names["A"] = team_a
     st.session_state.team_names["B"] = team_b
 
     # Set attuale
     st.session_state.current_set = st.number_input(
-        "Seleziona Set", min_value=1, max_value=SETS, value=st.session_state.current_set, step=1
+        "Seleziona Set", min_value=1, max_value=SETS, value=st.session_state.current_set, step=1, key="current_set"
     )
 
     # Selezione giocatori
     st.subheader("Seleziona 7 giocatori in campo")
     options = st.multiselect(
-        "Giocatori Team A", st.session_state.players["Nome"].tolist(), default=st.session_state.field_players
+        "Giocatori Team A", st.session_state.players["Nome"].tolist(), default=st.session_state.field_players, key="select_players"
     )
     if len(options) == 7:
         st.session_state.field_players = options
@@ -99,27 +99,27 @@ st.markdown("## Punteggio attuale 🏐")
 st.metric(st.session_state.team_names["A"], st.session_state.score["A"])
 st.metric(st.session_state.team_names["B"], st.session_state.score["B"])
 
-# --- Giocatori con pulsante fondamentale + menu codice ---
+# --- Giocatori con pulsante fondamentale + menu codice (chiavi univoche) ---
 st.subheader("Giocatori e Score")
 
-for gp in st.session_state.field_players:
-    cols = st.columns([2, 2, 4])  # Nome | Pulsante fondamentale | Menu codice
-    
+for idx, gp in enumerate(st.session_state.field_players):
+    cols = st.columns([2, 2, 4])
+
     # Colonna 1: nome giocatore
     cols[0].write(f"**{gp}**")
-    
+
     # Colonna 2: pulsante fondamentale
-    if cols[1].button("Scegli fondamentale", key=f"fund_{gp}"):
+    if cols[1].button("Scegli fondamentale", key=f"fund_{gp}_{idx}"):
         st.session_state.selected_player = gp
         st.session_state.selected_action = None
         st.session_state.selected_code = None
 
-    # Colonna 3: menu codice (solo se questo giocatore è selezionato)
+    # Colonna 3: menu codice, visibile solo se il giocatore è selezionato
     if st.session_state.selected_player == gp:
         action = st.selectbox(
             "Seleziona fondamentale",
             list(ACTION_CODES.keys()),
-            key=f"action_{gp}"
+            key=f"action_{gp}_{idx}"
         )
         st.session_state.selected_action = action
 
@@ -127,7 +127,7 @@ for gp in st.session_state.field_players:
             code = cols[2].selectbox(
                 "Seleziona risultato",
                 ACTION_CODES[action],
-                key=f"code_{gp}"
+                key=f"code_{gp}_{idx}"
             )
             st.session_state.selected_code = code
 
@@ -144,10 +144,8 @@ for gp in st.session_state.field_players:
                 }
                 st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
                 
-                # Aggiorna punteggio
                 update_score()
                 
-                # Rotazione se necessario
                 if action in ["Attacco","Battuta","Muro"] and code=="Punto":
                     rotate_team()
                 
@@ -161,7 +159,7 @@ st.subheader("Eventi generali")
 for label, team, action in [("Errore avversario","A","Errore avversario"),
                              ("Punto avversario","B","Punto avversario"),
                              ("Errore squadra","B","Errore squadra")]:
-    if st.button(label):
+    if st.button(label, key=f"event_{action}"):
         st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
             "Set": st.session_state.current_set,
             "PointNo":0,
