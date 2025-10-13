@@ -16,7 +16,6 @@ ACTION_CODES = {
     "Muro": ["Punto", "Errore"]
 }
 
-# Percorso sicuro per Streamlit Cloud
 ROSTER_FILE = os.path.join(os.path.dirname(__file__), "roster.xlsx")
 
 # --- Caricamento roster ---
@@ -42,47 +41,44 @@ if "team_names" not in st.session_state:
 if "score" not in st.session_state:
     st.session_state.score = {"A":0,"B":0}
 
-# --- Sidebar ---
-st.sidebar.header("Impostazioni partita")
-st.sidebar.subheader("Squadre")
-team_a = st.sidebar.text_input("Nome squadra A", value=st.session_state.team_names["A"])
-team_b = st.sidebar.text_input("Nome squadra B", value=st.session_state.team_names["B"])
+# --- Input principali nella main page (mobile friendly) ---
+st.subheader("Nome squadre")
+team_a = st.text_input("Nome squadra A", value=st.session_state.team_names["A"])
+team_b = st.text_input("Nome squadra B", value=st.session_state.team_names["B"])
 st.session_state.team_names["A"] = team_a
 st.session_state.team_names["B"] = team_b
 
-st.sidebar.subheader("Set attuale")
-st.session_state.current_set = st.sidebar.number_input(
+st.subheader("Set attuale")
+st.session_state.current_set = st.number_input(
     "Seleziona Set", min_value=1, max_value=SETS, value=st.session_state.current_set, step=1
 )
 
-st.sidebar.subheader("Formazione in campo")
-options = st.sidebar.multiselect(
-    "Seleziona 7 giocatori",
-    st.session_state.players["Nome"].tolist(),
-    default=st.session_state.field_players
+st.subheader("Seleziona 7 giocatori in campo")
+options = st.multiselect(
+    "Giocatori Team A", st.session_state.players["Nome"].tolist(), default=st.session_state.field_players
 )
 if len(options) == 7:
     st.session_state.field_players = options
 elif len(options) > 0:
-    st.sidebar.warning("Seleziona esattamente 7 giocatori")
+    st.warning("Seleziona esattamente 7 giocatori")
 
-st.sidebar.subheader("Sostituzioni")
-if st.session_state.field_players:
-    out_player = st.sidebar.selectbox("Chi esce?", st.session_state.field_players)
-    in_player = st.sidebar.selectbox(
-        "Chi entra?",
-        [p for p in st.session_state.players["Nome"] if p not in st.session_state.field_players]
-    )
-    if st.sidebar.button("Esegui sostituzione"):
-        idx_out = st.session_state.field_players.index(out_player)
-        st.session_state.field_players[idx_out] = in_player
-        st.success(f"Sostituito {out_player} con {in_player}")
+# --- Sostituzioni e rotazioni in expander ---
+with st.expander("Sostituzioni / Rotazioni"):
+    if st.session_state.field_players:
+        out_player = st.selectbox("Chi esce?", st.session_state.field_players)
+        in_player = st.selectbox(
+            "Chi entra?",
+            [p for p in st.session_state.players["Nome"] if p not in st.session_state.field_players]
+        )
+        if st.button("Esegui sostituzione"):
+            idx_out = st.session_state.field_players.index(out_player)
+            st.session_state.field_players[idx_out] = in_player
+            st.success(f"Sostituito {out_player} con {in_player}")
 
-# --- Rotazione ---
-def rotate_team():
-    court_players = st.session_state.field_players[:6]
-    rotated = [court_players[-1]] + court_players[:-1]
-    st.session_state.field_players[:6] = rotated
+    if st.button("Ruota squadra"):
+        court_players = st.session_state.field_players[:6]
+        rotated = [court_players[-1]] + court_players[:-1]
+        st.session_state.field_players[:6] = rotated
 
 # --- Calcolo punteggio ---
 def update_score():
@@ -108,97 +104,69 @@ update_score()
 
 # --- Punteggio ---
 st.markdown("## Punteggio attuale 🏐")
-cols_score = st.columns(2)
-cols_score[0].metric(st.session_state.team_names["A"], st.session_state.score["A"])
-cols_score[1].metric(st.session_state.team_names["B"], st.session_state.score["B"])
+st.metric(st.session_state.team_names["A"], st.session_state.score["A"])
+st.metric(st.session_state.team_names["B"], st.session_state.score["B"])
 
-# --- Inserimento eventi ---
-st.header("Inserisci evento")
+# --- Inserimento eventi (verticale, mobile-friendly) ---
+st.subheader("Inserisci evento")
+selected_player = st.session_state.get("selected_player", None)
 
+st.markdown("### Giocatori")
 if st.session_state.field_players:
-    player_cols = st.columns([2,3], gap="small")
-    
-    with player_cols[0]:
-        st.subheader("Giocatori")
-        for gp in st.session_state.field_players:
-            if st.button(gp, key=f"player_{gp}"):
-                st.session_state.selected_player = gp
+    for gp in st.session_state.field_players:
+        if st.button(gp, key=f"player_{gp}"):
+            st.session_state.selected_player = gp
+            selected_player = gp
 
-    with player_cols[1]:
-        st.subheader("Score")
-        selected_player = st.session_state.get("selected_player", None)
-        if selected_player:
-            for action, codes in ACTION_CODES.items():
-                st.markdown(f"**{action}**")
-                code_cols = st.columns(len(codes), gap="small")
-                for j, code in enumerate(codes):
-                    if code_cols[j].button(code, key=f"{selected_player}_{action}_{code}"):
-                        team = "A"
-                        new_row = {
-                            "Set": st.session_state.current_set,
-                            "PointNo": len(st.session_state.raw)+1,
-                            "Team": team,
-                            "Giocatore": selected_player,
-                            "Azione": action,
-                            "Codice": code,
-                            "Note": ""
-                        }
-                        st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
-                        update_score()
-                        if action in ["Attacco","Battuta","Muro"] and code=="Punto":
-                            rotate_team()
-                        # Imposta a None invece di cancellare
-                        st.session_state.selected_player = None
-                        # Nessun st.experimental_rerun()
+st.markdown("### Score")
+if selected_player:
+    for action, codes in ACTION_CODES.items():
+        st.markdown(f"**{action}**")
+        for code in codes:
+            if st.button(code, key=f"{selected_player}_{action}_{code}"):
+                team = "A"
+                new_row = {
+                    "Set": st.session_state.current_set,
+                    "PointNo": len(st.session_state.raw)+1,
+                    "Team": team,
+                    "Giocatore": selected_player,
+                    "Azione": action,
+                    "Codice": code,
+                    "Note": ""
+                }
+                st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
+                update_score()
+                if action in ["Attacco","Battuta","Muro"] and code=="Punto":
+                    court_players = st.session_state.field_players[:6]
+                    st.session_state.field_players[:6] = [court_players[-1]] + court_players[:-1]
+                st.session_state.selected_player = None
 
 # --- Eventi generali ---
 st.subheader("Eventi generali")
-extra_cols = st.columns(3, gap="small")
-if extra_cols[0].button("Errore avversario"):
-    st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
-        "Set": st.session_state.current_set,
-        "PointNo":0,
-        "Team":"A",
-        "Giocatore":"Evento Generale",
-        "Azione":"Errore avversario",
-        "Codice":"",
-        "Note":""
-    }])], ignore_index=True)
-    update_score()
-if extra_cols[1].button("Punto avversario"):
-    st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
-        "Set": st.session_state.current_set,
-        "PointNo":0,
-        "Team":"B",
-        "Giocatore":"Evento Generale",
-        "Azione":"Punto avversario",
-        "Codice":"",
-        "Note":""
-    }])], ignore_index=True)
-    update_score()
-if extra_cols[2].button("Errore squadra"):
-    st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
-        "Set": st.session_state.current_set,
-        "PointNo":0,
-        "Team":"B",
-        "Giocatore":"Evento Generale",
-        "Azione":"Errore squadra",
-        "Codice":"",
-        "Note":""
-    }])], ignore_index=True)
-    update_score()
+for label, team, action in [("Errore avversario","A","Errore avversario"),
+                             ("Punto avversario","B","Punto avversario"),
+                             ("Errore squadra","B","Errore squadra")]:
+    if st.button(label):
+        st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
+            "Set": st.session_state.current_set,
+            "PointNo":0,
+            "Team": team,
+            "Giocatore":"Evento Generale",
+            "Azione": action,
+            "Codice":"",
+            "Note":""
+        }])], ignore_index=True)
+        update_score()
 
 # --- Eventi registrati ---
 st.subheader("Eventi registrati")
 if not st.session_state.raw.empty:
     for idx, row in st.session_state.raw.iterrows():
-        cols = st.columns([4,1])
-        cols[0].write(f"{row['Set']} | {row['PointNo']} | {st.session_state.team_names[row['Team']]} | {row['Giocatore']} | {row['Azione']} | {row['Codice']} | {row['Note']}")
-        if cols[1].button("Elimina", key=f"del_{idx}"):
+        st.write(f"{row['Set']} | {row['PointNo']} | {st.session_state.team_names[row['Team']]} | {row['Giocatore']} | {row['Azione']} | {row['Codice']} | {row['Note']}")
+        if st.button(f"Elimina {idx}", key=f"del_{idx}"):
             st.session_state.raw.drop(idx, inplace=True)
             st.session_state.raw.reset_index(drop=True, inplace=True)
             update_score()
-            st.experimental_rerun()
 
 # --- Tabellini ---
 def compute_counts(df_raw):
