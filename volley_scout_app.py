@@ -106,61 +106,58 @@ st.metric(st.session_state.team_names["B"], st.session_state.score["B"])
 st.subheader("Giocatori e Score")
 
 for gp in st.session_state.field_players:
-    st.write(f"**{gp}**")
-    if st.button(f"Seleziona {gp}", key=f"player_{gp}"):
-        # Toggle per il giocatore selezionato
-        if st.session_state.selected_player == gp:
-            st.session_state.selected_player = None
-        else:
-            st.session_state.selected_player = gp
-            st.session_state.selected_action = None
-            st.session_state.selected_code = None
+    cols = st.columns([2, 2, 4])  # Nome | Pulsante fondamentale | Menu codice
+    
+    # Colonna 1: nome giocatore
+    cols[0].write(f"**{gp}**")
+    
+    # Colonna 2: pulsante per selezionare fondamentale
+    if cols[1].button("Scegli fondamentale", key=f"fund_{gp}"):
+        st.session_state.selected_player = gp
+        st.session_state.selected_action = None
+        st.session_state.selected_code = None
 
-# Mostra menu a tendina solo se c’è un giocatore selezionato
-if st.session_state.selected_player:
-    gp = st.session_state.selected_player
-    
-    # Seleziona fondamentale
-    action = st.selectbox(
-        "Seleziona fondamentale",
-        list(ACTION_CODES.keys()),
-        key=f"action_{gp}"
-    )
-    st.session_state.selected_action = action
-    
-    if action:
-        # Seleziona codice relativo al fondamentale
-        code = st.selectbox(
-            "Seleziona risultato",
-            ACTION_CODES[action],
-            key=f"code_{gp}"
+    # Colonna 3: menu a tendina per codice, visibile solo se questo giocatore è selezionato
+    if st.session_state.selected_player == gp:
+        action = st.selectbox(
+            "Seleziona fondamentale",
+            list(ACTION_CODES.keys()),
+            key=f"action_{gp}"
         )
-        st.session_state.selected_code = code
-        
-        if code:
-            # Registra evento
-            new_row = {
-                "Set": st.session_state.current_set,
-                "PointNo": len(st.session_state.raw)+1,
-                "Team": "A",
-                "Giocatore": gp,
-                "Azione": action,
-                "Codice": code,
-                "Note": ""
-            }
-            st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
-            
-            # Aggiorna punteggio
-            update_score()
-            
-            # Rotazione se necessario
-            if action in ["Attacco","Battuta","Muro"] and code=="Punto":
-                rotate_team()
-            
-            # Reset menu
-            st.session_state.selected_player = None
-            st.session_state.selected_action = None
-            st.session_state.selected_code = None
+        st.session_state.selected_action = action
+
+        if action:
+            code = cols[2].selectbox(
+                "Seleziona risultato",
+                ACTION_CODES[action],
+                key=f"code_{gp}"
+            )
+            st.session_state.selected_code = code
+
+            if code:
+                # Registra evento
+                new_row = {
+                    "Set": st.session_state.current_set,
+                    "PointNo": len(st.session_state.raw)+1,
+                    "Team": "A",
+                    "Giocatore": gp,
+                    "Azione": action,
+                    "Codice": code,
+                    "Note": ""
+                }
+                st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
+                
+                # Aggiorna punteggio
+                update_score()
+                
+                # Rotazione se necessario
+                if action in ["Attacco","Battuta","Muro"] and code=="Punto":
+                    rotate_team()
+                
+                # Reset menu
+                st.session_state.selected_player = None
+                st.session_state.selected_action = None
+                st.session_state.selected_code = None
 
 # --- Eventi generali ---
 st.subheader("Eventi generali")
