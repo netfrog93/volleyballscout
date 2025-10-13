@@ -45,7 +45,30 @@ if "selected_player" not in st.session_state:
 if "setup_done" not in st.session_state:
     st.session_state.setup_done = False
 
-# --- Setup iniziale (scompare quando completato) ---
+# --- Funzioni ---
+def rotate_team():
+    court_players = st.session_state.field_players[:6]
+    st.session_state.field_players[:6] = [court_players[-1]] + court_players[:-1]
+
+def update_score():
+    score = {"A":0,"B":0}
+    for _, row in st.session_state.raw.iterrows():
+        team = row["Team"]
+        action = row["Azione"]
+        code = row["Codice"]
+
+        if action in ["Attacco","Battuta","Muro"]:
+            if code=="Punto":
+                score[team]+=1
+            elif code=="Errore":
+                score["B" if team=="A" else "A"]+=1
+        elif action=="Errore avversario":
+            score["A"]+=1
+        elif action in ["Punto avversario","Errore squadra"]:
+            score["B"]+=1
+    st.session_state.score = score
+
+# --- Setup iniziale ---
 if not st.session_state.setup_done:
     st.subheader("Setup Partita")
 
@@ -67,42 +90,16 @@ if not st.session_state.setup_done:
     )
     if len(options) == 7:
         st.session_state.field_players = options
-        st.session_state.setup_done = True  # Nasconde setup
+        st.session_state.setup_done = True
     elif len(options) > 0:
         st.warning("Seleziona esattamente 7 giocatori")
-
-# --- Rotazioni ---
-def rotate_team():
-    court_players = st.session_state.field_players[:6]
-    st.session_state.field_players[:6] = [court_players[-1]] + court_players[:-1]
-
-# --- Aggiorna punteggio ---
-def update_score():
-    score = {"A":0,"B":0}
-    for _, row in st.session_state.raw.iterrows():
-        team = row["Team"]
-        action = row["Azione"]
-        code = row["Codice"]
-
-        if action in ["Attacco","Battuta","Muro"]:
-            if code=="Punto":
-                score[team]+=1
-            elif code=="Errore":
-                score["B" if team=="A" else "A"]+=1
-        elif action=="Errore avversario":
-            score["A"]+=1
-        elif action in ["Punto avversario","Errore squadra"]:
-            score["B"]+=1
-    st.session_state.score = score
-
-update_score()
 
 # --- Punteggio ---
 st.markdown("## Punteggio attuale 🏐")
 st.metric(st.session_state.team_names["A"], st.session_state.score["A"])
 st.metric(st.session_state.team_names["B"], st.session_state.score["B"])
 
-# --- Giocatori e fondamentali ---
+# --- Giocatori con pulsante fondamentale + menu codice ---
 st.subheader("Giocatori e Score")
 
 for gp in st.session_state.field_players:
@@ -111,13 +108,13 @@ for gp in st.session_state.field_players:
     # Colonna 1: nome giocatore
     cols[0].write(f"**{gp}**")
     
-    # Colonna 2: pulsante per selezionare fondamentale
+    # Colonna 2: pulsante fondamentale
     if cols[1].button("Scegli fondamentale", key=f"fund_{gp}"):
         st.session_state.selected_player = gp
         st.session_state.selected_action = None
         st.session_state.selected_code = None
 
-    # Colonna 3: menu a tendina per codice, visibile solo se questo giocatore è selezionato
+    # Colonna 3: menu codice (solo se questo giocatore è selezionato)
     if st.session_state.selected_player == gp:
         action = st.selectbox(
             "Seleziona fondamentale",
