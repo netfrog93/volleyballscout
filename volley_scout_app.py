@@ -5,22 +5,21 @@ import os
 
 st.set_page_config(page_title="Volley Scout", layout="wide")
 
-# --- Rerun compatibile con tutte le versioni ---
+# =============================
+# RERUN COMPATIBILE
+# =============================
 def safe_rerun():
-    """Chiama st.rerun() se disponibile, altrimenti st.experimental_rerun() se presente."""
     rerun = getattr(st, "rerun", None)
     if callable(rerun):
         return rerun()
     exp_rerun = getattr(st, "experimental_rerun", None)
     if callable(exp_rerun):
         return exp_rerun()
-    # Fallback soft
     st.warning("La tua versione di Streamlit non supporta il rerun automatico.")
 
 MAX_PLAYERS = 20
 SETS = 5
 
-# === Fondamentali abbreviati ===
 ACTION_CODES = {
     "BAT":  ["Punto", "Buona", "Regolare", "Errore"],
     "RICE": ["Ottima", "Buona", "Regolare", "Scarsa", "Errore"],
@@ -29,9 +28,6 @@ ACTION_CODES = {
     "MU":   ["Punto", "Errore"]
 }
 
-# =========================
-#  ROSTER: upload & template
-# =========================
 REQUIRED_ROSTER_COLUMNS = ["Numero", "Nome", "Ruolo"]
 
 def default_roster_df():
@@ -48,7 +44,6 @@ def load_roster_from_upload(uploaded_file):
         st.sidebar.error(f"Errore nel leggere l'Excel: {e}")
         return None
 
-    # Normalizza nomi colonne (case/whitespace-insensitive)
     rename_map = {}
     for col in df.columns:
         key = col.strip().lower()
@@ -67,12 +62,9 @@ def load_roster_from_upload(uploaded_file):
         return None
 
     df = df[REQUIRED_ROSTER_COLUMNS].copy()
-    # Tipi base
     df["Numero"] = pd.to_numeric(df["Numero"], errors="coerce").astype("Int64")
     df["Nome"] = df["Nome"].astype(str).str.strip()
     df["Ruolo"] = df["Ruolo"].astype(str).str.strip()
-
-    # Rimuove righe senza Nome
     df = df[df["Nome"].fillna("").str.len() > 0].reset_index(drop=True)
     return df
 
@@ -82,7 +74,9 @@ def df_to_excel_bytes(df, sheet_name="Roster"):
         df.to_excel(writer, index=False, sheet_name=sheet_name)
     return output.getvalue()
 
-# --- Session state iniziali ---
+# =============================
+# SESSION STATE INIZIALI
+# =============================
 if "players" not in st.session_state:
     st.session_state.players = default_roster_df()
 if "raw" not in st.session_state:
@@ -93,7 +87,6 @@ if "field_players" not in st.session_state:
     st.session_state.field_players = []
 if "team_names" not in st.session_state:
     st.session_state.team_names = {"A":"Team A","B":"Team B"}
-# Il punteggio non è visualizzato ma resta calcolato per la logica
 if "score" not in st.session_state:
     st.session_state.score = {"A":0,"B":0}
 if "selected_player" not in st.session_state:
@@ -101,104 +94,113 @@ if "selected_player" not in st.session_state:
 if "selected_action" not in st.session_state:
     st.session_state.selected_action = None
 
-# ==============
-# Sidebar
-# ==============
-st.sidebar.header("Impostazioni partita")
+# =============================
+# NUOVA SEZIONE: ROTAZIONI E LIBERO
+# =============================
+if "lineups" not in st.session_state:
+    st.session_state.lineups = {
+        "A": {
+            "positions": {"1": "P", "2": "S1", "3": "C2", "4": "O", "5": "S2", "6": "L"},
+            "libero": "L",
+            "centrali": ["C1", "C2"]
+        },
+        "B": {
+            "positions": {"1": "P", "2": "S1", "3": "C2", "4": "O", "5": "S2", "6": "L"},
+            "libero": "L",
+            "centrali": ["C1", "C2"]
+        }
+    }
 
-# ---- Roster (upload + template) ----
+if "serving_team" not in st.session_state:
+    st.session_state.serving_team = "A"
+
+def rotate_team(team):
+    pos = st.session_state.lineups[team]["positions"]
+    new_pos = {
+        "1": pos["2"], "2": pos["3"], "3": pos["4"],
+        "4": pos["5"], "5": pos["6"], "6": pos["1"]
+    }
+    st.session_state.lineups[team]["positions"] = new_pos
+    update_libero_positions()
+
+def change_service():
+    st.session_state.serving_team = "A" if st.session_state.serving_team == "B" else "B"
+    update_libero_positions()
+
+def update_libero_positions():
+    for team in ["A", "B"]:
+        lineup = st.session_state.lineups[team]
+        libero = lineup["libero"]
+        centrali = lineup["centrali"]
+        pos = lineup["positions"]
+
+        centrale_seconda_linea = None
+        for p in ["5", "6"]:
+            if pos[p] in centrali:
+                centrale_seconda_linea = p
+                break
+
+        # Ricezione
+        if team != st.session_state.serving_team:
+            if centrale_seconda_linea:
+                pos[centrale_seconda_linea] = libero
+
+        # Battuta
+        else:
+            if pos["1"] == libero:
+                centrale_fuori = [c for c in centrali if c not in pos.values()]
+                if centrale_fuori:
+                    pos["1"] = centrale_fuori[0]
+
+# =============================
+# SIDEBAR: IMPOSTAZIONI
+# =============================
+st.sidebar.header("Impostazioni partita")
 st.sidebar.subheader("Roster")
+
 uploaded_roster = st.sidebar.file_uploader(
-    "Carica roster.xlsx (colonne richieste: Numero, Nome, Ruolo)",
-    type=["xlsx"],
-    accept_multiple_files=False
+    "Carica roster.xlsx (Numero, Nome, Ruolo)",
+    type=["xlsx"], accept_multiple_files=False
 )
 if uploaded_roster is not None:
     df_loaded = load_roster_from_upload(uploaded_roster)
     if df_loaded is not None:
         st.session_state.players = df_loaded
         st.sidebar.success(f"Roster caricato: {len(df_loaded)} giocatori")
-        # Pulisci eventuali selezioni non più valide
         valid_names = set(st.session_state.players["Nome"].tolist())
         st.session_state.field_players = [p for p in st.session_state.field_players if p in valid_names]
 
-# Template scaricabile
 template_bytes = df_to_excel_bytes(default_roster_df(), sheet_name="Roster")
-st.sidebar.download_button(
-    "Scarica template roster.xlsx",
-    data=template_bytes,
+st.sidebar.download_button("Scarica template roster.xlsx", data=template_bytes,
     file_name="roster_template.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-# ---- Squadre ----
-st.sidebar.subheader("Squadre")
-team_a = st.sidebar.text_input("Nome squadra A", value=st.session_state.team_names["A"])
-team_b = st.sidebar.text_input("Nome squadra B", value=st.session_state.team_names["B"])
-st.session_state.team_names["A"] = team_a
-st.session_state.team_names["B"] = team_b
+# =============================
+# VISUALIZZAZIONE ROTAZIONI
+# =============================
+st.markdown("## 🏐 Rotazioni e Libero")
 
-# ---- Set attuale ----
-st.sidebar.subheader("Set attuale")
-st.session_state.current_set = st.sidebar.number_input(
-    "Seleziona Set", min_value=1, max_value=SETS, value=st.session_state.current_set, step=1
-)
+colA, colB = st.columns(2)
+with colA:
+    st.write(f"**Squadra A** ({st.session_state.team_names['A']})")
+    for p in ["1","2","3","4","5","6"]:
+        st.write(f"Posto {p}: {st.session_state.lineups['A']['positions'][p]}")
+    if st.button("Ruota A"):
+        rotate_team("A")
 
-# ---- Formazione in campo ----
-st.sidebar.subheader("Formazione in campo")
-options = st.sidebar.multiselect(
-    "Seleziona 7 giocatori",
-    st.session_state.players["Nome"].tolist(),
-    default=st.session_state.field_players
-)
-if len(options) == 7:
-    st.session_state.field_players = options
-elif len(options) > 0:
-    st.sidebar.warning("Seleziona esattamente 7 giocatori")
+with colB:
+    st.write(f"**Squadra B** ({st.session_state.team_names['B']})")
+    for p in ["1","2","3","4","5","6"]:
+        st.write(f"Posto {p}: {st.session_state.lineups['B']['positions'][p]}")
+    if st.button("Ruota B"):
+        rotate_team("B")
 
-# ---- Sostituzioni ----
-st.sidebar.subheader("Sostituzioni")
-if st.session_state.field_players:
-    out_player = st.sidebar.selectbox("Chi esce?", st.session_state.field_players)
-    in_player = st.sidebar.selectbox(
-        "Chi entra?",
-        [p for p in st.session_state.players["Nome"] if p not in st.session_state.field_players]
-    )
-    if st.sidebar.button("Esegui sostituzione"):
-        idx_out = st.session_state.field_players.index(out_player)
-        st.session_state.field_players[idx_out] = in_player
-        st.success(f"Sostituito {out_player} con {in_player}")
+st.markdown("---")
+st.write(f"**Squadra al servizio:** {st.session_state.serving_team}")
+if st.button("Cambia servizio"):
+    change_service()
 
-# ==============
-# Funzioni di gioco
-# ==============
-def rotate_team():
-    court_players = st.session_state.field_players[:6]
-    if len(court_players) == 6:
-        rotated = [court_players[-1]] + court_players[:-1]
-        st.session_state.field_players[:6] = rotated
-
-def update_score():
-    score = {"A":0,"B":0}
-    for _, row in st.session_state.raw.iterrows():
-        team = row["Team"]
-        action = row["Azione"]
-        code = row["Codice"]
-        # Punti dai fondamentali (sigle)
-        if action in ["ATK","BAT","MU"]:
-            if code == "Punto":
-                score[team] += 1
-            elif code == "Errore":
-                other = "B" if team == "A" else "A"
-                score[other] += 1
-        # Eventi generali
-        elif action == "Errore avversario":
-            score["A"] += 1
-        elif action in ["Punto avversario","Errore squadra"]:
-            score["B"] += 1
-    st.session_state.score = score
-
-update_score()
+st.caption("Il libero entra automaticamente per il centrale in seconda linea e rientra il centrale al servizio.")
 
 # =======================
 # Flusso: 7 giocatori → fondamentale → score
