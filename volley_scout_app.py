@@ -285,14 +285,14 @@ if st.session_state.selected_player and st.session_state.selected_action:
             st.session_state.selected_player = None
             safe_rerun()
 
-    nav_cols = st.columns([1,1,4])
-    if nav_cols[0].button("⬅️ Fondamentale", key="back_to_action", type="secondary"):
-        st.session_state.selected_action = None
-        safe_rerun()
-    if nav_cols[1].button("⬅️ Giocatori", key="back_to_players2", type="secondary"):
-        st.session_state.selected_action = None
-        st.session_state.selected_player = None
-        safe_rerun()
+  #  nav_cols = st.columns([1,1,4])
+  #  if nav_cols[0].button("⬅️ Fondamentale", key="back_to_action", type="secondary"):
+  #      st.session_state.selected_action = None
+  #      safe_rerun()
+  #  if nav_cols[1].button("⬅️ Giocatori", key="back_to_players2", type="secondary"):
+  #      st.session_state.selected_action = None
+  #      st.session_state.selected_player = None
+  #      safe_rerun()
 
 # =======================
 # Eventi generali
