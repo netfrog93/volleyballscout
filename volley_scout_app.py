@@ -236,8 +236,6 @@ if all(v not in [None, ""] for v in st.session_state.positions.values()):
 
     libero = st.session_state.positions["Libero"]
     if libero:
-        st.markdown("---")
-        st.subheader("Libero (fisso)")
         if st.button(f"Libero: {libero}", key=f"player_libero", use_container_width=True):
             st.session_state.selected_player = libero
             st.session_state.selected_action = None
