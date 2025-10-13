@@ -14,17 +14,19 @@ def safe_rerun():
     exp_rerun = getattr(st, "experimental_rerun", None)
     if callable(exp_rerun):
         return exp_rerun()
+    # Fallback soft
     st.warning("La tua versione di Streamlit non supporta il rerun automatico.")
 
 MAX_PLAYERS = 14
 SETS = 5
 
+# === Fondamentali abbreviati ===
 ACTION_CODES = {
-    "BAT": ["Punto", "Buona", "Regolare", "Errore"],
+    "BAT":  ["Punto", "Buona", "Regolare", "Errore"],
     "RICE": ["Ottima", "Buona", "Regolare", "Scarsa", "Errore"],
-    "ATK": ["Punto", "Buono", "Regolare", "Murato", "Errore"],
-    "DIF": ["Ottima", "Errore"],
-    "MU": ["Punto", "Errore"]
+    "ATK":  ["Punto", "Buono", "Regolare", "Murato", "Errore"],
+    "DIF":  ["Ottima", "Errore"],
+    "MU":   ["Punto", "Errore"]
 }
 
 # =========================
@@ -65,9 +67,12 @@ def load_roster_from_upload(uploaded_file):
         return None
 
     df = df[REQUIRED_ROSTER_COLUMNS].copy()
+    # Tipi base
     df["Numero"] = pd.to_numeric(df["Numero"], errors="coerce").astype("Int64")
     df["Nome"] = df["Nome"].astype(str).str.strip()
     df["Ruolo"] = df["Ruolo"].astype(str).str.strip()
+
+    # Rimuove righe senza Nome
     df = df[df["Nome"].fillna("").str.len() > 0].reset_index(drop=True)
     return df
 
@@ -88,6 +93,7 @@ if "field_players" not in st.session_state:
     st.session_state.field_players = []
 if "team_names" not in st.session_state:
     st.session_state.team_names = {"A":"Team A","B":"Team B"}
+# Il punteggio non è visualizzato ma resta calcolato per la logica
 if "score" not in st.session_state:
     st.session_state.score = {"A":0,"B":0}
 if "selected_player" not in st.session_state:
@@ -100,7 +106,7 @@ if "selected_action" not in st.session_state:
 # ==============
 st.sidebar.header("Impostazioni partita")
 
-# ---- Roster upload ----
+# ---- Roster (upload + template) ----
 st.sidebar.subheader("Roster")
 uploaded_roster = st.sidebar.file_uploader(
     "Carica roster.xlsx (colonne richieste: Numero, Nome, Ruolo)",
@@ -112,6 +118,7 @@ if uploaded_roster is not None:
     if df_loaded is not None:
         st.session_state.players = df_loaded
         st.sidebar.success(f"Roster caricato: {len(df_loaded)} giocatori")
+        # Pulisci eventuali selezioni non più valide
         valid_names = set(st.session_state.players["Nome"].tolist())
         st.session_state.field_players = [p for p in st.session_state.field_players if p in valid_names]
 
@@ -177,7 +184,7 @@ def update_score():
         team = row["Team"]
         action = row["Azione"]
         code = row["Codice"]
-        # Punti dai fondamentali
+        # Punti dai fondamentali (sigle)
         if action in ["ATK","BAT","MU"]:
             if code == "Punto":
                 score[team] += 1
@@ -194,17 +201,8 @@ def update_score():
 update_score()
 
 # =======================
-# Punteggio totale
+# Flusso: 7 giocatori → fondamentale → score
 # =======================
-st.markdown("## Punteggio attuale 🏐")
-cols_score = st.columns(2)
-cols_score[0].metric(st.session_state.team_names["A"], st.session_state.score["A"])
-cols_score[1].metric(st.session_state.team_names["B"], st.session_state.score["B"])
-
-# =======================
-# Inserisci evento — flusso in 3 step con righe singole
-# =======================
-st.header("Inserisci evento")
 
 def register_event(player, action, code):
     team = "A" if player in st.session_state.field_players[:6] else "B"
@@ -219,9 +217,10 @@ def register_event(player, action, code):
     }
     st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
     update_score()
+    # Rotazione se punto per Team A su ATK/BAT/MU
     if action in ["ATK", "BAT", "MU"] and code == "Punto" and team == "A":
         rotate_team()
-    # torna alla riga dei giocatori
+    # Torna alla riga dei giocatori
     st.session_state.selected_action = None
     st.session_state.selected_player = None
     safe_rerun()
@@ -367,7 +366,8 @@ def to_excel_bytes(tabellino, raw_data):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         tabellino.to_excel(writer, index=False)
-        # raw_data.to_excel(writer, sheet_name="Raw", index=False)  # se vuoi anche il raw
+        # Se vuoi, puoi esportare anche il raw:
+        # raw_data.to_excel(writer, sheet_name="Raw", index=False)
     return output.getvalue()
 
 excel_data = to_excel_bytes(tabellino, st.session_state.raw)
