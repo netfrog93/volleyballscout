@@ -7,7 +7,6 @@ st.set_page_config(page_title="Volley Scout", layout="wide")
 
 # --- Rerun compatibile con tutte le versioni ---
 def safe_rerun():
-    """Chiama st.rerun() se disponibile, altrimenti st.experimental_rerun() se presente."""
     rerun = getattr(st, "rerun", None)
     if callable(rerun):
         return rerun()
@@ -85,17 +84,15 @@ if "positions" not in st.session_state:
     st.session_state.positions = {i: None for i in range(1, 7)}
     st.session_state.positions["Libero"] = None
 if "team_names" not in st.session_state:
-    st.session_state.team_names = {"A":"Team A","B":"Team B"}
+    st.session_state.team_names = {"A":"La mia squadra","B":"Avversari"}
 if "score" not in st.session_state:
     st.session_state.score = {"A":0,"B":0}
 if "selected_player" not in st.session_state:
     st.session_state.selected_player = None
 if "selected_action" not in st.session_state:
     st.session_state.selected_action = None
-if "selected_team" not in st.session_state:
-    st.session_state.selected_team = None
 if "service_team" not in st.session_state:
-    st.session_state.service_team = "A"  # di default serve la squadra A
+    st.session_state.service_team = "A"  # di default serve la mia squadra
 
 # ==============
 # Sidebar
@@ -125,8 +122,8 @@ st.sidebar.download_button(
 
 # ---- Squadre ----
 st.sidebar.subheader("Squadre")
-team_a = st.sidebar.text_input("Nome squadra A", value=st.session_state.team_names["A"])
-team_b = st.sidebar.text_input("Nome squadra B", value=st.session_state.team_names["B"])
+team_a = st.sidebar.text_input("Nome mia squadra (A)", value=st.session_state.team_names["A"])
+team_b = st.sidebar.text_input("Nome avversari (B)", value=st.session_state.team_names["B"])
 st.session_state.team_names["A"] = team_a
 st.session_state.team_names["B"] = team_b
 
@@ -136,9 +133,18 @@ st.session_state.current_set = st.sidebar.number_input(
     "Seleziona Set", min_value=1, max_value=SETS, value=st.session_state.current_set, step=1
 )
 
-# ---- Formazione posizionale ----
-st.sidebar.subheader("Formazione (posizioni 1–6 + Libero)")
+# ---- Chi inizia al servizio ----
+st.sidebar.subheader("Servizio iniziale")
+service_start = st.sidebar.radio(
+    "Chi inizia al servizio?",
+    options=["A", "B"],
+    format_func=lambda x: st.session_state.team_names[x],
+    index=0 if st.session_state.service_team == "A" else 1
+)
+st.session_state.service_team = service_start
 
+# ---- Formazione ----
+st.sidebar.subheader("Formazione (posizioni 1–6 + Libero)")
 available_players = st.session_state.players["Nome"].tolist()
 used = [p for p in st.session_state.positions.values() if p]
 
@@ -196,7 +202,6 @@ def rotate_team_positions():
     st.session_state.positions = new_positions
 
 def update_score():
-    """Aggiorna il punteggio totale di ciascuna squadra"""
     score = {"A":0,"B":0}
     for _, row in st.session_state.raw.iterrows():
         team = row["Team"]
@@ -220,17 +225,13 @@ def update_score():
 update_score()
 
 # =======================
-# Flusso principale: campo + fondamentali
+# Campo e fondamentali
 # =======================
-
 st.markdown(f"### 🏐 Servizio: **{st.session_state.team_names[st.session_state.service_team]}**")
 
 if all(v not in [None, ""] for v in st.session_state.positions.values()):
     st.subheader("Disposizione in campo (posizioni 1–6)")
-    positions_layout = [
-        [4, 3, 2],
-        [5, 6, 1]
-    ]
+    positions_layout = [[4, 3, 2],[5, 6, 1]]
     for row in positions_layout:
         cols = st.columns(3)
         for i, pos in enumerate(row):
@@ -239,35 +240,20 @@ if all(v not in [None, ""] for v in st.session_state.positions.values()):
                 if cols[i].button(f"{pos}: {player}", key=f"player_{player}", use_container_width=True):
                     st.session_state.selected_player = player
                     st.session_state.selected_action = None
-                    st.session_state.selected_team = None
                     safe_rerun()
-
     libero = st.session_state.positions["Libero"]
     if libero:
-        if st.button(f"Libero: {libero}", key=f"player_libero", use_container_width=True):
+        if st.button(f"Libero: {libero}", key="player_libero", use_container_width=True):
             st.session_state.selected_player = libero
             st.session_state.selected_action = None
-            st.session_state.selected_team = None
             safe_rerun()
 else:
     st.info("Imposta tutti i giocatori nelle posizioni per iniziare.")
 
-# --- Scelta squadra ---
-if st.session_state.selected_player and not st.session_state.selected_team:
-    st.markdown("---")
-    st.subheader(f"{st.session_state.selected_player} → scegli la squadra")
-    cols_team = st.columns(2)
-    if cols_team[0].button(f"{st.session_state.team_names['A']} (A)", use_container_width=True):
-        st.session_state.selected_team = "A"
-        safe_rerun()
-    if cols_team[1].button(f"{st.session_state.team_names['B']} (B)", use_container_width=True):
-        st.session_state.selected_team = "B"
-        safe_rerun()
-
 # --- Scelta fondamentale ---
-if st.session_state.selected_player and st.session_state.selected_team and not st.session_state.selected_action:
+if st.session_state.selected_player and not st.session_state.selected_action:
     st.markdown("---")
-    st.subheader(f"{st.session_state.selected_player} ({st.session_state.team_names[st.session_state.selected_team]}) → scegli il fondamentale")
+    st.subheader(f"{st.session_state.selected_player} → scegli il fondamentale")
     actions = list(ACTION_CODES.keys())
     cols_actions = st.columns(len(actions))
     for i, action in enumerate(actions):
@@ -276,11 +262,10 @@ if st.session_state.selected_player and st.session_state.selected_team and not s
             safe_rerun()
 
 # --- Scelta esito ---
-if st.session_state.selected_player and st.session_state.selected_action and st.session_state.selected_team:
+if st.session_state.selected_player and st.session_state.selected_action:
     st.markdown("---")
     action = st.session_state.selected_action
-    team = st.session_state.selected_team
-    st.subheader(f"{st.session_state.selected_player} · {action} ({st.session_state.team_names[team]}) → scegli lo Score")
+    st.subheader(f"{st.session_state.selected_player} · {action} → scegli lo Score")
     codes = ACTION_CODES[action]
     cols_codes = st.columns(len(codes))
     for i, code in enumerate(codes):
@@ -288,7 +273,7 @@ if st.session_state.selected_player and st.session_state.selected_action and st.
             new_row = {
                 "Set": st.session_state.current_set,
                 "PointNo": len(st.session_state.raw) + 1,
-                "Team": team,
+                "Team": "A",
                 "Giocatore": st.session_state.selected_player,
                 "Azione": action,
                 "Codice": code,
@@ -297,16 +282,24 @@ if st.session_state.selected_player and st.session_state.selected_action and st.
             st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
             update_score()
 
-            # --- LOGICA CORRETTA RALLY POINT SYSTEM ---
-            if action in ["ATK", "BAT", "MU"] and code == "Punto":
-                scoring_team = team
-                if scoring_team != st.session_state.service_team:
+            # --- Logica corretta rally point system ---
+            if action in ["ATK","BAT","MU"] and code == "Punto":
+                if st.session_state.service_team == "A":
+                    pass  # la mia squadra serve già, nessuna rotazione
+                else:
+                    # la mia squadra guadagna servizio → ruota
                     rotate_team_positions()
-                    st.session_state.service_team = scoring_team
+                    st.session_state.service_team = "A"
+            elif action in ["ATK","BAT","MU"] and code == "Errore":
+                # punto avversario
+                if st.session_state.service_team == "B":
+                    pass  # gli avversari già servono
+                else:
+                    # gli avversari guadagnano servizio
+                    st.session_state.service_team = "B"
 
             st.session_state.selected_action = None
             st.session_state.selected_player = None
-            st.session_state.selected_team = None
             safe_rerun()
 
 # =======================
@@ -366,7 +359,7 @@ if not st.session_state.raw.empty:
             safe_rerun()
 
 # =======================
-# Tabellini e riepilogo
+# Tabellini e export
 # =======================
 def compute_counts(df_raw):
     players = st.session_state.players["Nome"].tolist()
@@ -392,9 +385,7 @@ st.subheader("Tabellini giocatori")
 tabellino = compute_counts(st.session_state.raw)
 st.dataframe(tabellino, use_container_width=True)
 
-# =======================
-# Export Excel
-# =======================
+# === Export Excel ===
 st.header("Esporta")
 def to_excel_bytes(tabellino, raw_data):
     output = io.BytesIO()
