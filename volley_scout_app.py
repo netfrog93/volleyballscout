@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import io
 import os
+import openpyxl
 
 st.set_page_config(page_title="Volley Scout", layout="wide")
 
