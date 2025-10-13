@@ -17,7 +17,7 @@ def safe_rerun():
     # Fallback soft
     st.warning("La tua versione di Streamlit non supporta il rerun automatico.")
 
-MAX_PLAYERS = 14
+MAX_PLAYERS = 20
 SETS = 5
 
 # === Fondamentali abbreviati ===
@@ -278,7 +278,7 @@ if st.session_state.selected_player and st.session_state.selected_action:
 # =======================
 # Eventi generali
 # =======================
-st.subheader("Eventi generali")
+#st.subheader("Eventi generali")
 extra_cols = st.columns(3, gap="small")
 if extra_cols[0].button("Errore avversario", use_container_width=True):
     st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
