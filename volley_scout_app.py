@@ -230,12 +230,12 @@ st.dataframe(tabellino)
 
 # --- Export Excel ---
 st.header("Esporta")
-def to_excel_bytes(tabellino, raw):
+def to_excel_bytes(tabellino, raw_data):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        raw.to_excel(writer, sheet_name="RawData", index=False)
-        tabellino.to_excel(writer, sheet_name="Riepilogo")
-        writer.save()
+        tabellino.to_excel(writer, index=False)
+        # se vuoi puoi scrivere anche raw_data in un altro sheet
+        # raw_data.to_excel(writer, sheet_name="Raw", index=False)
     return output.getvalue()
 
 excel_data = to_excel_bytes(tabellino, st.session_state.raw)
