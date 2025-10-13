@@ -307,39 +307,71 @@ if st.session_state.selected_player and st.session_state.selected_action:
 # =======================
 st.subheader("Eventi generali")
 extra_cols = st.columns(3)
+
+# --- Errore avversario ---
 if extra_cols[0].button("Errore avversario", use_container_width=True):
     st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
         "Set": st.session_state.current_set,
-        "PointNo": 0,
+        "PointNo": len(st.session_state.raw) + 1,
         "Team": "A",
         "Giocatore": "Evento Generale",
         "Azione": "Errore avversario",
         "Codice": "",
         "Note": ""
     }])], ignore_index=True)
+
+    # Punteggio e servizio
     update_score()
+    if st.session_state.service_team == "A":
+        pass  # già al servizio, continua
+    else:
+        # la mia squadra guadagna servizio → ruota
+        rotate_team_positions()
+        st.session_state.service_team = "A"
+
+    safe_rerun()
+
+# --- Punto avversario ---
 if extra_cols[1].button("Punto avversario", use_container_width=True):
     st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
         "Set": st.session_state.current_set,
-        "PointNo": 0,
+        "PointNo": len(st.session_state.raw) + 1,
         "Team": "B",
         "Giocatore": "Evento Generale",
         "Azione": "Punto avversario",
         "Codice": "",
         "Note": ""
     }])], ignore_index=True)
+
     update_score()
+    if st.session_state.service_team == "B":
+        pass  # avversari già al servizio
+    else:
+        # avversari guadagnano servizio
+        st.session_state.service_team = "B"
+
+    safe_rerun()
+
+# --- Errore squadra ---
 if extra_cols[2].button("Errore squadra", use_container_width=True):
     st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
         "Set": st.session_state.current_set,
-        "PointNo": 0,
+        "PointNo": len(st.session_state.raw) + 1,
         "Team": "B",
         "Giocatore": "Evento Generale",
         "Azione": "Errore squadra",
         "Codice": "",
         "Note": ""
     }])], ignore_index=True)
+
     update_score()
+    if st.session_state.service_team == "B":
+        pass  # avversari già al servizio
+    else:
+        # gli avversari guadagnano servizio
+        st.session_state.service_team = "B"
+
+    safe_rerun()
 
 # =======================
 # Eventi registrati
