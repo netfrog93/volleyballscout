@@ -266,7 +266,7 @@ else:
 # --- Scelta fondamentale ---
 if st.session_state.selected_player and not st.session_state.selected_action:
     st.markdown("---")
-    st.subheader(f"{st.session_state.selected_player} → scegli il fondamentale")
+    #st.subheader(f"{st.session_state.selected_player} → scegli il fondamentale")
     actions = list(ACTION_CODES.keys())
     cols_actions = st.columns(len(actions))
     for i, action in enumerate(actions):
