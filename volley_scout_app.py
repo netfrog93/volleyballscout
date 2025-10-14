@@ -266,54 +266,57 @@ else:
 # =======================
 # Eventi generali
 # =======================
-#st.subheader("Eventi generali")
-extra_cols = st.columns(3)
+extra_cols = st.columns(2)
 
-# --- Errore avversario ---
-if extra_cols[0].button("Errore avversario", use_container_width=True):
-    st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
-        "Set": st.session_state.current_set,
-        "PointNo": len(st.session_state.raw) + 1,
-        "Team": "A",
-        "Giocatore": "Evento Generale",
-        "Azione": "Errore avversario",
-        "Codice": "",
-        "Note": ""
-    }])], ignore_index=True)
+# --- Bottone unico per gli avversari ---
+if extra_cols[0].button("Avversari", use_container_width=True, type="secondary"):
+    st.session_state.show_avversari = True
+else:
+    # se non premuto, nasconde il sotto-menu
+    if "show_avversari" not in st.session_state:
+        st.session_state.show_avversari = False
 
-    # Punteggio e servizio
-    update_score()
-    if st.session_state.service_team == "A":
-        pass  # già al servizio, continua
-    else:
-        # la mia squadra guadagna servizio → ruota
-        rotate_team_positions()
-        st.session_state.service_team = "A"
+# --- Mostra scelte "Punto" / "Errore" ---
+if st.session_state.get("show_avversari", False):
+    sub_cols = st.columns(2)
 
-    safe_rerun()
+    # --- Punto avversario ---
+    if sub_cols[0].button("Punto", use_container_width=True, type="primary"):
+        st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
+            "Set": st.session_state.current_set,
+            "PointNo": len(st.session_state.raw) + 1,
+            "Team": "B",
+            "Giocatore": "Evento Generale",
+            "Azione": "Punto avversario",
+            "Codice": "",
+            "Note": ""
+        }])], ignore_index=True)
 
-# --- Punto avversario ---
-if extra_cols[1].button("Punto avversario", use_container_width=True):
-    st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
-        "Set": st.session_state.current_set,
-        "PointNo": len(st.session_state.raw) + 1,
-        "Team": "B",
-        "Giocatore": "Evento Generale",
-        "Azione": "Punto avversario",
-        "Codice": "",
-        "Note": ""
-    }])], ignore_index=True)
-
-    update_score()
-    if st.session_state.service_team == "B":
-        pass  # avversari già al servizio
-    else:
-        # avversari guadagnano servizio
+        update_score()
         st.session_state.service_team = "B"
+        st.session_state.show_avversari = False
+        safe_rerun()
 
-    safe_rerun()
+    # --- Errore avversario ---
+    if sub_cols[1].button("Errore", use_container_width=True, type="primary"):
+        st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
+            "Set": st.session_state.current_set,
+            "PointNo": len(st.session_state.raw) + 1,
+            "Team": "A",
+            "Giocatore": "Evento Generale",
+            "Azione": "Errore avversario",
+            "Codice": "",
+            "Note": ""
+        }])], ignore_index=True)
 
-# --- Errore squadra ---
+        update_score()
+        if st.session_state.service_team != "A":
+            rotate_team_positions()
+            st.session_state.service_team = "A"
+        st.session_state.show_avversari = False
+        safe_rerun()
+
+# --- Errore squadra (resta invariato) ---
 if extra_cols[2].button("Errore squadra", use_container_width=True):
     st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
         "Set": st.session_state.current_set,
@@ -326,12 +329,7 @@ if extra_cols[2].button("Errore squadra", use_container_width=True):
     }])], ignore_index=True)
 
     update_score()
-    if st.session_state.service_team == "B":
-        pass  # avversari già al servizio
-    else:
-        # gli avversari guadagnano servizio
-        st.session_state.service_team = "B"
-
+    st.session_state.service_team = "B"
     safe_rerun()
 
 # --- Scelta fondamentale ---
