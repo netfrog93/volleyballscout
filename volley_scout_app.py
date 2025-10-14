@@ -278,7 +278,7 @@ if st.session_state.selected_player and not st.session_state.selected_action:
 if st.session_state.selected_player and st.session_state.selected_action:
     st.markdown("---")
     action = st.session_state.selected_action
-    st.subheader(f"{st.session_state.selected_player} · {action} → scegli lo Score")
+    #st.subheader(f"{st.session_state.selected_player} · {action} → scegli lo Score")
     codes = ACTION_CODES[action]
     cols_codes = st.columns(len(codes))
     for i, code in enumerate(codes):
@@ -318,7 +318,7 @@ if st.session_state.selected_player and st.session_state.selected_action:
 # =======================
 # Eventi generali
 # =======================
-st.subheader("Eventi generali")
+#st.subheader("Eventi generali")
 extra_cols = st.columns(3)
 
 # --- Errore avversario ---
