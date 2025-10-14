@@ -266,7 +266,7 @@ else:
 # =======================
 # Eventi generali
 # =======================
-extra_cols = st.columns(2)
+extra_cols = st.columns(3)
 
 # --- Bottone unico per gli avversari ---
 if extra_cols[0].button("Avversari", use_container_width=True, type="secondary"):
