@@ -231,19 +231,32 @@ st.markdown(f"### 🏐 Servizio: **{st.session_state.team_names[st.session_state
 
 if all(v not in [None, ""] for v in st.session_state.positions.values()):
     st.subheader("Disposizione in campo (posizioni 1–6)")
-    positions_layout = [[4, 3, 2],[5, 6, 1]]
+    positions_layout = [[4, 3, 2], [5, 6, 1]]
+
     for row in positions_layout:
         cols = st.columns(3)
         for i, pos in enumerate(row):
             player = st.session_state.positions[pos]
             if player:
-                if cols[i].button(f"{pos}: {player}", key=f"player_{player}", use_container_width=True):
+                if cols[i].button(
+                    f"{pos}: {player}",
+                    key=f"player_{player}",
+                    use_container_width=True,
+                    type="primary" if st.session_state.selected_player == player else "secondary"
+                ):
                     st.session_state.selected_player = player
                     st.session_state.selected_action = None
                     safe_rerun()
+
+    # Libero
     libero = st.session_state.positions["Libero"]
     if libero:
-        if st.button(f"Libero: {libero}", key="player_libero", use_container_width=True):
+        if st.button(
+            f"Libero: {libero}",
+            key="player_libero",
+            use_container_width=True,
+            type="primary" if st.session_state.selected_player == libero else "secondary"
+        ):
             st.session_state.selected_player = libero
             st.session_state.selected_action = None
             safe_rerun()
