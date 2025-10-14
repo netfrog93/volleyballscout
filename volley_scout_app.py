@@ -84,7 +84,7 @@ if "positions" not in st.session_state:
     st.session_state.positions = {i: None for i in range(1, 7)}
     st.session_state.positions["Libero"] = None
 if "team_names" not in st.session_state:
-    st.session_state.team_names = {"A":"Squadra A","B":"Squadra B"}
+    st.session_state.team_names = {"A":"SMV","B":"Squadra B"}
 if "score" not in st.session_state:
     st.session_state.score = {"A":0,"B":0}
 if "selected_player" not in st.session_state:
@@ -122,8 +122,8 @@ st.sidebar.download_button(
 
 # ---- Squadre ----
 st.sidebar.subheader("Squadre")
-team_a = st.sidebar.text_input("Nome mia squadra (A)", value=st.session_state.team_names["A"])
-team_b = st.sidebar.text_input("Nome avversari (B)", value=st.session_state.team_names["B"])
+team_a = st.sidebar.text_input("Squadra A", value=st.session_state.team_names["A"])
+team_b = st.sidebar.text_input("Squadra B", value=st.session_state.team_names["B"])
 st.session_state.team_names["A"] = team_a
 st.session_state.team_names["B"] = team_b
 
@@ -178,25 +178,11 @@ st.session_state.positions["Libero"] = st.sidebar.selectbox(
     key="pos_libero"
 )
 
-# Verifica formazione e gestione sidebar
+# Verifica formazione
 if any(v in [None, ""] for v in st.session_state.positions.values()):
     st.sidebar.warning("Completa la formazione (posizioni 1–6 + Libero).")
-    sidebar_complete = False
 else:
     st.sidebar.success("Formazione completa.")
-    sidebar_complete = True
-
-# --- Nascondi sidebar se formazione completa ---
-if sidebar_complete:
-    hide_sidebar_style = """
-        <style>
-            [data-testid="stSidebar"] {visibility: hidden; width: 0;}
-            [data-testid="stSidebarNav"] {display: none;}
-            [data-testid="stSidebarUserContent"] {display: none;}
-            section.main {margin-left: 0 !important;}
-        </style>
-    """
-    st.markdown(hide_sidebar_style, unsafe_allow_html=True)
 
 # ==============
 # Funzioni di gioco
