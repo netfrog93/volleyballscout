@@ -299,7 +299,6 @@ if st.session_state.selected_player and st.session_state.selected_player != "Avv
 
 elif st.session_state.selected_player == "Avversari":
     st.markdown("---")
-    st.subheader("Avversari → scegli l'esito")
     cols_avv = st.columns(2)
     for i, label in enumerate(["Punto", "Errore"]):
         if cols_avv[i].button(label, key=f"avv_{label}", use_container_width=True, type="secondary"):
