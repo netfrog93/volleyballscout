@@ -273,19 +273,15 @@ if all(v not in [None, ""] for v in st.session_state.positions.values()):
 else:
     st.info("Imposta tutti i giocatori nelle posizioni per iniziare.")
 
-# =======================
-# Eventi generali
-# =======================
-extra_cols = st.columns(3)
-
-# --- Bottone Avversari ---
-if extra_cols[0].button("Avversari", use_container_width=True, type="secondary"):
+# --- Sposta i bottoni Avversari ed Errore squadra qui ---
+st.markdown("### Eventi generali")
+cols_extra = st.columns(2)
+if cols_extra[0].button("Avversari", use_container_width=True, type="secondary"):
     st.session_state.selected_player = "Avversari"
     st.session_state.selected_action = None
     safe_rerun()
 
-# --- Errore squadra ---
-if extra_cols[2].button("Errore squadra", use_container_width=True):
+if cols_extra[1].button("Errore squadra", use_container_width=True):
     rot = get_palleggiatrice_posizione()
     st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
         "Set": st.session_state.current_set,
@@ -300,6 +296,11 @@ if extra_cols[2].button("Errore squadra", use_container_width=True):
     update_score()
     st.session_state.service_team = "B"
     safe_rerun()
+
+
+# =======================
+# Eventi generali
+# =======================
 
 # --- Fondamentali o Avversari ---
 if st.session_state.selected_player and st.session_state.selected_player != "Avversari" and not st.session_state.selected_action:
