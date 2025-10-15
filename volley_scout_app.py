@@ -27,6 +27,7 @@ ACTION_CODES = {
     "MU":   ["Punto", "Errore"]
 }
 
+# === Roster upload & template ===
 REQUIRED_ROSTER_COLUMNS = ["Numero", "Nome", "Ruolo"]
 
 def default_roster_df():
@@ -109,12 +110,6 @@ if uploaded_roster is not None:
     df_loaded = load_roster_from_upload(uploaded_roster)
     if df_loaded is not None:
         st.session_state.players = df_loaded
-        # reset posizioni e chiavi widget
-        for pos in range(1,7):
-            st.session_state.pop(f"pos_select_{pos}", None)
-        st.session_state.pop("pos_select_libero", None)
-        st.session_state.positions = {i: None for i in range(1,7)}
-        st.session_state.positions["Libero"] = None
         st.sidebar.success(f"Roster caricato: {len(df_loaded)} giocatori")
 
 template_bytes = df_to_excel_bytes(default_roster_df(), sheet_name="Roster")
@@ -148,57 +143,42 @@ service_start = st.sidebar.radio(
 )
 st.session_state.service_team = service_start
 
-# ---- Formazione (versione stabile e corretta) ----
+# ---- Formazione ----
 st.sidebar.subheader("Formazione (posizioni 1–6 + Libero)")
 available_players = st.session_state.players["Nome"].tolist()
+used = [p for p in st.session_state.positions.values() if p]
 
-# Chiavi dedicate per ogni selectbox
-widget_keys = {pos: f"pos_select_{pos}" for pos in range(1, 7)}
-libero_key = "pos_select_libero"
-
-# Inizializza i valori dei widget se non presenti
 for pos in range(1, 7):
-    wk = widget_keys[pos]
-    if wk not in st.session_state:
-        st.session_state[wk] = st.session_state.positions.get(pos, "") or ""
-if libero_key not in st.session_state:
-    st.session_state[libero_key] = st.session_state.positions.get("Libero", "") or ""
-
-# Creazione selectbox posizioni 1–6
-for pos in range(1, 7):
-    current_selections = {p: st.session_state[widget_keys[p]] for p in range(1, 7)}
-    used_by_others = [v for p, v in current_selections.items() if p != pos and v]
-    current_player = st.session_state[widget_keys[pos]]
-
-    valid_options = [""] + [p for p in available_players if (p not in used_by_others) or (p == current_player)]
-    index_value = valid_options.index(current_player) if current_player in valid_options else 0
-
-    st.sidebar.selectbox(
+    current_player = st.session_state.positions[pos]
+    valid_options = [""] + [p for p in available_players if p not in used or p == current_player]
+    if current_player in available_players:
+        index_value = valid_options.index(current_player)
+    else:
+        index_value = 0
+        st.session_state.positions[pos] = ""
+    st.session_state.positions[pos] = st.sidebar.selectbox(
         f"Posizione {pos}",
         valid_options,
         index=index_value,
-        key=widget_keys[pos]
+        key=f"pos_{pos}"
     )
 
-# Selectbox del libero
-current_libero = st.session_state[libero_key]
-used_by_positions = [st.session_state[widget_keys[p]] for p in range(1, 7) if st.session_state[widget_keys[p]]]
-valid_libero_options = [""] + [p for p in available_players if (p not in used_by_positions) or p == current_libero]
-libero_index = valid_libero_options.index(current_libero) if current_libero in valid_libero_options else 0
-
-st.sidebar.selectbox(
+# Libero
+current_libero = st.session_state.positions["Libero"]
+valid_libero_options = [""] + [p for p in available_players if p not in used or p == current_libero]
+if current_libero in available_players:
+    libero_index = valid_libero_options.index(current_libero)
+else:
+    libero_index = 0
+    st.session_state.positions["Libero"] = ""
+st.session_state.positions["Libero"] = st.sidebar.selectbox(
     "Libero",
     valid_libero_options,
     index=libero_index,
-    key=libero_key
+    key="pos_libero"
 )
 
-# Aggiorna il dizionario positions in base ai valori effettivi dei widget
-for pos in range(1, 7):
-    st.session_state.positions[pos] = st.session_state.get(widget_keys[pos], "") or ""
-st.session_state.positions["Libero"] = st.session_state.get(libero_key, "") or ""
-
-# verifica formazione
+# Verifica formazione
 if any(v in [None, ""] for v in st.session_state.positions.values()):
     st.sidebar.warning("Completa la formazione (posizioni 1–6 + Libero).")
 else:
