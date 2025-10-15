@@ -148,49 +148,53 @@ service_start = st.sidebar.radio(
 )
 st.session_state.service_team = service_start
 
-# ---- Formazione (nuova versione stabile) ----
+# ---- Formazione (versione stabile e corretta) ----
 st.sidebar.subheader("Formazione (posizioni 1–6 + Libero)")
 available_players = st.session_state.players["Nome"].tolist()
 
-widget_keys = {pos: f"pos_select_{pos}" for pos in range(1,7)}
+# Chiavi dedicate per ogni selectbox
+widget_keys = {pos: f"pos_select_{pos}" for pos in range(1, 7)}
 libero_key = "pos_select_libero"
 
-# inizializza chiavi widget
-for pos in range(1,7):
+# Inizializza i valori dei widget se non presenti
+for pos in range(1, 7):
     wk = widget_keys[pos]
     if wk not in st.session_state:
         st.session_state[wk] = st.session_state.positions.get(pos, "") or ""
 if libero_key not in st.session_state:
     st.session_state[libero_key] = st.session_state.positions.get("Libero", "") or ""
 
-# selectbox posizioni
-for pos in range(1,7):
-    current_selections = {p: st.session_state[widget_keys[p]] for p in range(1,7)}
-    used_by_others = [v for p,v in current_selections.items() if p != pos and v]
+# Creazione selectbox posizioni 1–6
+for pos in range(1, 7):
+    current_selections = {p: st.session_state[widget_keys[p]] for p in range(1, 7)}
+    used_by_others = [v for p, v in current_selections.items() if p != pos and v]
     current_player = st.session_state[widget_keys[pos]]
+
     valid_options = [""] + [p for p in available_players if (p not in used_by_others) or (p == current_player)]
     index_value = valid_options.index(current_player) if current_player in valid_options else 0
-    st.session_state[widget_keys[pos]] = st.sidebar.selectbox(
+
+    st.sidebar.selectbox(
         f"Posizione {pos}",
         valid_options,
         index=index_value,
         key=widget_keys[pos]
     )
 
-# libero
+# Selectbox del libero
 current_libero = st.session_state[libero_key]
-used_by_positions = [st.session_state[widget_keys[p]] for p in range(1,7) if st.session_state[widget_keys[p]]]
+used_by_positions = [st.session_state[widget_keys[p]] for p in range(1, 7) if st.session_state[widget_keys[p]]]
 valid_libero_options = [""] + [p for p in available_players if (p not in used_by_positions) or p == current_libero]
 libero_index = valid_libero_options.index(current_libero) if current_libero in valid_libero_options else 0
-st.session_state[libero_key] = st.sidebar.selectbox(
+
+st.sidebar.selectbox(
     "Libero",
     valid_libero_options,
     index=libero_index,
     key=libero_key
 )
 
-# aggiorna dict positions
-for pos in range(1,7):
+# Aggiorna il dizionario positions in base ai valori effettivi dei widget
+for pos in range(1, 7):
     st.session_state.positions[pos] = st.session_state.get(widget_keys[pos], "") or ""
 st.session_state.positions["Libero"] = st.session_state.get(libero_key, "") or ""
 
@@ -200,4 +204,267 @@ if any(v in [None, ""] for v in st.session_state.positions.values()):
 else:
     st.sidebar.success("Formazione completa.")
 
-# (il resto del file — gestione campo, azioni, eventi, tabellini, export — resta invariato)
+# ==============
+# Funzioni di gioco
+# ==============
+def get_palleggiatrice_posizione():
+    """Restituisce la posizione attuale della palleggiatrice (P1–P6)"""
+    palleggiatrici = st.session_state.players.query("Ruolo == 'PALLEGGIATRICE'")["Nome"].tolist()
+    if not palleggiatrici:
+        return ""
+    palleggiatrice = palleggiatrici[0]
+    for pos, nome in st.session_state.positions.items():
+        if nome == palleggiatrice and isinstance(pos, int):
+            return f"P{pos}"
+    return ""
+
+def rotate_team_positions():
+    current = st.session_state.positions
+    new_positions = {
+        1: current[2],
+        6: current[1],
+        5: current[6],
+        4: current[5],
+        3: current[4],
+        2: current[3],
+        "Libero": current["Libero"]
+    }
+    st.session_state.positions = new_positions
+
+def update_score():
+    score = {"A":0,"B":0}
+    for _, row in st.session_state.raw.iterrows():
+        team = row["Team"]
+        action = row["Azione"]
+        code = row["Codice"]
+
+        if action in ["ATK","BAT","MU"]:
+            if code == "Punto":
+                score[team] += 1
+            elif code == "Errore":
+                other = "B" if team == "A" else "A"
+                score[other] += 1
+        elif action == "Errore avversario":
+            score["A"] += 1
+        elif action == "Punto avversario":
+            score["B"] += 1
+        elif action == "Errore squadra":
+            score["B"] += 1
+    st.session_state.score = score
+
+update_score()
+
+# =======================
+# Campo e fondamentali
+# =======================
+rotazione_p = get_palleggiatrice_posizione()
+st.markdown(f"### 🏐 Servizio: **{st.session_state.team_names[st.session_state.service_team]}**  ·  Rotazione: **{rotazione_p or '-'}**")
+
+if all(v not in [None, ""] for v in st.session_state.positions.values()):
+    st.subheader("Disposizione in campo (posizioni 1–6)")
+    positions_layout = [[4, 3, 2], [5, 6, 1]]
+
+    for row in positions_layout:
+        cols = st.columns(3)
+        for i, pos in enumerate(row):
+            player = st.session_state.positions[pos]
+            if player:
+                if cols[i].button(
+                    f"{pos}: {player}",
+                    key=f"player_{player}",
+                    use_container_width=True,
+                    type="primary" if st.session_state.selected_player == player else "secondary"
+                ):
+                    st.session_state.selected_player = player
+                    st.session_state.selected_action = None
+                    safe_rerun()
+
+    libero = st.session_state.positions["Libero"]
+    if libero:
+        if st.button(
+            f"Libero: {libero}",
+            key="player_libero",
+            use_container_width=True,
+            type="primary" if st.session_state.selected_player == libero else "secondary"
+        ):
+            st.session_state.selected_player = libero
+            st.session_state.selected_action = None
+            safe_rerun()
+else:
+    st.info("Imposta tutti i giocatori nelle posizioni per iniziare.")
+
+# =======================
+# Eventi generali
+# =======================
+extra_cols = st.columns(3)
+
+# --- Bottone Avversari ---
+if extra_cols[0].button("Avversari", use_container_width=True, type="secondary"):
+    st.session_state.selected_player = "Avversari"
+    st.session_state.selected_action = None
+    safe_rerun()
+
+# --- Errore squadra ---
+if extra_cols[2].button("Errore squadra", use_container_width=True):
+    rot = get_palleggiatrice_posizione()
+    st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
+        "Set": st.session_state.current_set,
+        "PointNo": len(st.session_state.raw) + 1,
+        "Team": "B",
+        "Giocatore": "Evento Generale",
+        "Azione": "Errore squadra",
+        "Codice": "",
+        "Note": "",
+        "Rotazione": rot if "A" == "A" else ""
+    }])], ignore_index=True)
+    update_score()
+    st.session_state.service_team = "B"
+    safe_rerun()
+
+# --- Fondamentali o Avversari ---
+if st.session_state.selected_player and st.session_state.selected_player != "Avversari" and not st.session_state.selected_action:
+    st.markdown("---")
+    actions = list(ACTION_CODES.keys())
+    cols_actions = st.columns(len(actions))
+    for i, action in enumerate(actions):
+        if cols_actions[i].button(action, key=f"action_{st.session_state.selected_player}_{action}", use_container_width=True):
+            st.session_state.selected_action = action
+            safe_rerun()
+
+elif st.session_state.selected_player == "Avversari":
+    st.markdown("---")
+    cols_avv = st.columns(2)
+    for i, label in enumerate(["Punto", "Errore"]):
+        if cols_avv[i].button(label, key=f"avv_{label}", use_container_width=True, type="secondary"):
+            rot = get_palleggiatrice_posizione()
+            if label == "Punto":
+                st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
+                    "Set": st.session_state.current_set,
+                    "PointNo": len(st.session_state.raw) + 1,
+                    "Team": "B",
+                    "Giocatore": "Evento Generale",
+                    "Azione": "Punto avversario",
+                    "Codice": "",
+                    "Note": "",
+                    "Rotazione": ""
+                }])], ignore_index=True)
+                update_score()
+                st.session_state.service_team = "B"
+            else:
+                st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
+                    "Set": st.session_state.current_set,
+                    "PointNo": len(st.session_state.raw) + 1,
+                    "Team": "A",
+                    "Giocatore": "Evento Generale",
+                    "Azione": "Errore avversario",
+                    "Codice": "",
+                    "Note": "",
+                    "Rotazione": rot
+                }])], ignore_index=True)
+                update_score()
+                if st.session_state.service_team != "A":
+                    rotate_team_positions()
+                    st.session_state.service_team = "A"
+
+            st.session_state.selected_player = None
+            st.session_state.selected_action = None
+            safe_rerun()
+
+# --- Scelta esito fondamentale ---
+if st.session_state.selected_player and st.session_state.selected_action:
+    st.markdown("---")
+    action = st.session_state.selected_action
+    codes = ACTION_CODES[action]
+    cols_codes = st.columns(len(codes))
+    for i, code in enumerate(codes):
+        if cols_codes[i].button(code, key=f"code_{st.session_state.selected_player}_{action}_{code}", use_container_width=True):
+            rot = get_palleggiatrice_posizione()
+            new_row = {
+                "Set": st.session_state.current_set,
+                "PointNo": len(st.session_state.raw) + 1,
+                "Team": "A",
+                "Giocatore": st.session_state.selected_player,
+                "Azione": action,
+                "Codice": code,
+                "Note": "",
+                "Rotazione": rot
+            }
+            st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
+            update_score()
+
+            if action in ["ATK","BAT","MU"] and code == "Punto":
+                if st.session_state.service_team == "A":
+                    pass
+                else:
+                    rotate_team_positions()
+                    st.session_state.service_team = "A"
+            elif action in ["ATK","BAT","MU"] and code == "Errore":
+                if st.session_state.service_team == "B":
+                    pass
+                else:
+                    st.session_state.service_team = "B"
+
+            st.session_state.selected_action = None
+            st.session_state.selected_player = None
+            safe_rerun()
+
+# =======================
+# Eventi registrati
+# =======================
+st.subheader("Eventi registrati")
+if not st.session_state.raw.empty:
+    for idx, row in st.session_state.raw.iterrows():
+        cols = st.columns([4,1])
+        cols[0].write(
+            f"{row['Set']}  {row['PointNo']}  {st.session_state.team_names[row['Team']]}  "
+            f"{row['Giocatore']}  {row['Azione']}  {row['Codice']}  {row['Rotazione']}"
+        )
+        if cols[1].button("Elimina", key=f"del_{idx}", use_container_width=True):
+            st.session_state.raw.drop(idx, inplace=True)
+            st.session_state.raw.reset_index(drop=True, inplace=True)
+            update_score()
+            safe_rerun()
+
+# =======================
+# Tabellini e export
+# =======================
+def compute_counts(df_raw):
+    players = st.session_state.players["Nome"].tolist()
+    columns = []
+    for act, codes in ACTION_CODES.items():
+        for c in codes:
+            columns.append(f"{act}_{c}")
+        columns.append(f"{act}_Tot")
+    data = pd.DataFrame(0, index=players, columns=columns)
+    for _, row in df_raw.iterrows():
+        g = row["Giocatore"]
+        act = row["Azione"]
+        code = row["Codice"]
+        col = f"{act}_{code}"
+        if g in data.index and col in data.columns:
+            data.at[g, col] += 1
+    for act, codes in ACTION_CODES.items():
+        code_cols = [f"{act}_{c}" for c in codes]
+        data[f"{act}_Tot"] = data[code_cols].sum(axis=1)
+    return data
+
+st.subheader("Tabellini giocatori")
+tabellino = compute_counts(st.session_state.raw)
+st.dataframe(tabellino, use_container_width=True)
+
+# === Export Excel ===
+st.header("Esporta")
+def to_excel_bytes(tabellino, raw_data):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        tabellino.to_excel(writer, index=False)
+        raw_data.to_excel(writer, sheet_name="Eventi", index=False)
+    return output.getvalue()
+
+excel_data = to_excel_bytes(tabellino, st.session_state.raw)
+st.download_button(
+    "Scarica Excel (.xlsx)",
+    data=excel_data,
+    file_name="Volley_Scout_Report.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
