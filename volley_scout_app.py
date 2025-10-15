@@ -189,7 +189,7 @@ else:
 # ==============
 def get_palleggiatrice_posizione():
     """Restituisce la posizione attuale della palleggiatrice (P1–P6)"""
-    palleggiatrici = st.session_state.players.query("Ruolo == 'Palleggiatrice'")["Nome"].tolist()
+    palleggiatrici = st.session_state.players.query("Ruolo == 'PALLEGGIATRICE'")["Nome"].tolist()
     if not palleggiatrici:
         return ""
     palleggiatrice = palleggiatrici[0]
