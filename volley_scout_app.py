@@ -397,19 +397,42 @@ def stats_block():
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-
 # =========================================================
 # MAIN
 # =========================================================
 def main():
+    # --- Inizializza gli stati una sola volta ---
     init_session_state()
-    sidebar_block()
-    field_block()
-    # Mostra il blocco eventi solo se la formazione è completa
-    if all(v not in [None, ""] for v in st.session_state.positions.values()):
-        events_block()
-        recorded_block()
-        stats_block()
 
+    # --- Sidebar (roster, set, formazione ecc.) ---
+    sidebar_block()
+
+    # --- Se la formazione è appena completata, forza un rerun per stabilizzare i widget ---
+    if "formation_rerun_done" not in st.session_state:
+        formazione_completa = all(v not in [None, ""] for v in st.session_state.positions.values())
+        if formazione_completa:
+            st.session_state.formation_rerun_done = True
+            safe_rerun()
+            return
+
+    # --- Campo di gioco e selezione giocatori ---
+    field_block()
+
+    # --- Mostra gli eventi solo se la formazione è completa ---
+    formazione_completa = all(v not in [None, ""] for v in st.session_state.positions.values())
+    if formazione_completa:
+        events_block()
+    else:
+        st.info("Completa la formazione per abilitare i pulsanti di gioco.")
+
+    # --- Eventi registrati e tabellini ---
+    recorded_block()
+    stats_block()
+
+
+# =========================================================
+# AVVIO APP
+# =========================================================
 if __name__ == "__main__":
     main()
+
