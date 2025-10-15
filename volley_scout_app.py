@@ -45,9 +45,10 @@ def init_session_state():
         st.session_state.raw = pd.DataFrame(columns=["Set","PointNo","Team","Giocatore","Azione","Codice","Note","Rotazione"])
     if "current_set" not in st.session_state:
         st.session_state.current_set = 1
+    # <-- usa stringa vuota "" come valore "non assegnato" invece di None
     if "positions" not in st.session_state:
-        st.session_state.positions = {i: None for i in range(1, 7)}
-        st.session_state.positions["Libero"] = None
+        st.session_state.positions = {i: "" for i in range(1, 7)}
+        st.session_state.positions["Libero"] = ""
     if "team_names" not in st.session_state:
         st.session_state.team_names = {"A": "SMV", "B": "Squadra B"}
     if "score" not in st.session_state:
@@ -58,6 +59,9 @@ def init_session_state():
         st.session_state.selected_action = None
     if "service_team" not in st.session_state:
         st.session_state.service_team = "A"
+    # flag per rerun di sincronizzazione (puoi resettarlo manualmente se fai cambi grandi)
+    if "formation_rerun_done" not in st.session_state:
+        st.session_state.formation_rerun_done = False
 
 
 # =========================================================
@@ -158,6 +162,11 @@ def sidebar_block():
         if df_loaded is not None:
             st.session_state.players = df_loaded
             st.sidebar.success(f"Roster caricato: {len(df_loaded)} giocatori")
+            # dopo caricamento roster, resetta posizioni vuote ma non sovrascrive quelle già scelte
+            avail = st.session_state.players["Nome"].tolist()
+            for k, v in list(st.session_state.positions.items()):
+                if v not in avail:
+                    st.session_state.positions[k] = ""
 
     template_bytes = df_to_excel_bytes(default_roster_df(), sheet_name="Roster")
     st.sidebar.download_button(
@@ -186,19 +195,53 @@ def sidebar_block():
 
     st.sidebar.subheader("Formazione (posizioni 1–6 + Libero)")
     available_players = st.session_state.players["Nome"].tolist()
-    used = [p for p in st.session_state.positions.values() if p]
+    # considera come "usati" solo quelli non-vuoti
+    used = [p for p in st.session_state.positions.values() if p != ""]
 
+    # crea ogni selectbox gestendo l'indice in modo sicuro
     for pos in range(1, 7):
-        valid_options = [""] + [p for p in available_players if p not in used or p == st.session_state.positions[pos]]
-        st.session_state.positions[pos] = st.sidebar.selectbox(f"Posizione {pos}", valid_options, key=f"pos_{pos}")
+        current_player = st.session_state.positions.get(pos, "")
+        # opzioni: vuoto + nomi liberi o già assegnati a questa posizione
+        valid_options = [""] + [p for p in available_players if (p not in used) or (p == current_player)]
+        # trova index in modo sicuro
+        try:
+            index_value = valid_options.index(current_player)
+        except ValueError:
+            index_value = 0
+            current_player = ""
+        st.session_state.positions[pos] = st.sidebar.selectbox(
+            f"Posizione {pos}",
+            valid_options,
+            index=index_value,
+            key=f"pos_{pos}"
+        )
 
-    valid_libero_options = [""] + [p for p in available_players if p not in used or p == st.session_state.positions["Libero"]]
-    st.session_state.positions["Libero"] = st.sidebar.selectbox("Libero", valid_libero_options, key="pos_libero")
+    # Libero
+    current_libero = st.session_state.positions.get("Libero", "")
+    valid_libero_options = [""] + [p for p in available_players if (p not in used) or (p == current_libero)]
+    try:
+        libero_index = valid_libero_options.index(current_libero)
+    except ValueError:
+        libero_index = 0
+        current_libero = ""
+    st.session_state.positions["Libero"] = st.sidebar.selectbox(
+        "Libero",
+        valid_libero_options,
+        index=libero_index,
+        key="pos_libero"
+    )
 
-    if any(v in [None, ""] for v in st.session_state.positions.values()):
+    # messaggio di stato
+    if any(v == "" for v in st.session_state.positions.values()):
         st.sidebar.warning("Completa la formazione (posizioni 1–6 + Libero)")
     else:
         st.sidebar.success("Formazione completa.")
+
+    # ---- DEBUG OPZIONALE: mostra lo stato delle posizioni (rimuovi in produzione se vuoi) ----
+    st.sidebar.markdown("---")
+    st.sidebar.write("DEBUG posizioni:")
+    for k, v in st.session_state.positions.items():
+        st.sidebar.write(f"{k}: {v if v else '-'}")
 
 
 # =========================================================
@@ -401,38 +444,29 @@ def stats_block():
 # MAIN
 # =========================================================
 def main():
-    # --- Inizializza gli stati una sola volta ---
+    # inizializza stato coerente
     init_session_state()
 
-    # --- Sidebar (roster, set, formazione ecc.) ---
+    # costruzione sidebar e form
     sidebar_block()
 
-    # --- Se la formazione è appena completata, forza un rerun per stabilizzare i widget ---
-    if "formation_rerun_done" not in st.session_state:
-        formazione_completa = all(v not in [None, ""] for v in st.session_state.positions.values())
-        if formazione_completa:
-            st.session_state.formation_rerun_done = True
-            safe_rerun()
-            return
-
-    # --- Campo di gioco e selezione giocatori ---
+    # campo
     field_block()
 
-    # --- Mostra gli eventi solo se la formazione è completa ---
-    formazione_completa = all(v not in [None, ""] for v in st.session_state.positions.values())
+    # Verifica formazione completa (ora confrontiamo con stringhe vuote)
+    formazione_completa = all(v != "" for v in st.session_state.positions.values())
+
+    # Se la formazione è appena diventata completa e non abbiamo ancora fatto il rerun di sincronizzazione:
+    if formazione_completa and not st.session_state.get("formation_rerun_done", False):
+        st.session_state.formation_rerun_done = True
+        safe_rerun()
+        return
+
+    # Mostra gli eventi solo se la formazione è completa
     if formazione_completa:
         events_block()
     else:
         st.info("Completa la formazione per abilitare i pulsanti di gioco.")
 
-    # --- Eventi registrati e tabellini ---
     recorded_block()
     stats_block()
-
-
-# =========================================================
-# AVVIO APP
-# =========================================================
-if __name__ == "__main__":
-    main()
-
