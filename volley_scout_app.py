@@ -92,7 +92,7 @@ if "selected_player" not in st.session_state:
 if "selected_action" not in st.session_state:
     st.session_state.selected_action = None
 if "service_team" not in st.session_state:
-    st.session_state.service_team = "A"  # di default serve squadra A
+    st.session_state.service_team = "A"
 
 # ==============
 # Sidebar
@@ -188,7 +188,6 @@ else:
 # Funzioni di gioco
 # ==============
 def rotate_team_positions():
-    """Ruota le posizioni 1→6→5→4→3→2→1"""
     current = st.session_state.positions
     new_positions = {
         1: current[2],
@@ -248,7 +247,6 @@ if all(v not in [None, ""] for v in st.session_state.positions.values()):
                     st.session_state.selected_action = None
                     safe_rerun()
 
-    # Libero
     libero = st.session_state.positions["Libero"]
     if libero:
         if st.button(
@@ -268,55 +266,13 @@ else:
 # =======================
 extra_cols = st.columns(3)
 
-# --- Bottone unico per gli avversari ---
+# --- Bottone Avversari ---
 if extra_cols[0].button("Avversari", use_container_width=True, type="secondary"):
-    st.session_state.show_avversari = True
-else:
-    # se non premuto, nasconde il sotto-menu
-    if "show_avversari" not in st.session_state:
-        st.session_state.show_avversari = False
+    st.session_state.selected_player = "Avversari"
+    st.session_state.selected_action = None
+    safe_rerun()
 
-# --- Mostra scelte "Punto" / "Errore" ---
-if st.session_state.get("show_avversari", False):
-    sub_cols = st.columns(2)
-
-    # --- Punto avversario ---
-    if sub_cols[0].button("Punto", use_container_width=True, type="secondary"):
-        st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
-            "Set": st.session_state.current_set,
-            "PointNo": len(st.session_state.raw) + 1,
-            "Team": "B",
-            "Giocatore": "Evento Generale",
-            "Azione": "Punto avversario",
-            "Codice": "",
-            "Note": ""
-        }])], ignore_index=True)
-
-        update_score()
-        st.session_state.service_team = "B"
-        st.session_state.show_avversari = False
-        safe_rerun()
-
-    # --- Errore avversario ---
-    if sub_cols[1].button("Errore", use_container_width=True, type="secondary"):
-        st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
-            "Set": st.session_state.current_set,
-            "PointNo": len(st.session_state.raw) + 1,
-            "Team": "A",
-            "Giocatore": "Evento Generale",
-            "Azione": "Errore avversario",
-            "Codice": "",
-            "Note": ""
-        }])], ignore_index=True)
-
-        update_score()
-        if st.session_state.service_team != "A":
-            rotate_team_positions()
-            st.session_state.service_team = "A"
-        st.session_state.show_avversari = False
-        safe_rerun()
-
-# --- Errore squadra (resta invariato) ---
+# --- Errore squadra ---
 if extra_cols[2].button("Errore squadra", use_container_width=True):
     st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
         "Set": st.session_state.current_set,
@@ -327,15 +283,13 @@ if extra_cols[2].button("Errore squadra", use_container_width=True):
         "Codice": "",
         "Note": ""
     }])], ignore_index=True)
-
     update_score()
     st.session_state.service_team = "B"
     safe_rerun()
 
-# --- Scelta fondamentale ---
-if st.session_state.selected_player and not st.session_state.selected_action:
+# --- Fondamentali o Avversari ---
+if st.session_state.selected_player and st.session_state.selected_player != "Avversari" and not st.session_state.selected_action:
     st.markdown("---")
-    #st.subheader(f"{st.session_state.selected_player} → scegli il fondamentale")
     actions = list(ACTION_CODES.keys())
     cols_actions = st.columns(len(actions))
     for i, action in enumerate(actions):
@@ -343,11 +297,47 @@ if st.session_state.selected_player and not st.session_state.selected_action:
             st.session_state.selected_action = action
             safe_rerun()
 
-# --- Scelta esito ---
+elif st.session_state.selected_player == "Avversari":
+    st.markdown("---")
+    st.subheader("Avversari → scegli l'esito")
+    cols_avv = st.columns(2)
+    for i, label in enumerate(["Punto", "Errore"]):
+        if cols_avv[i].button(label, key=f"avv_{label}", use_container_width=True, type="secondary"):
+            if label == "Punto":
+                st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
+                    "Set": st.session_state.current_set,
+                    "PointNo": len(st.session_state.raw) + 1,
+                    "Team": "B",
+                    "Giocatore": "Evento Generale",
+                    "Azione": "Punto avversario",
+                    "Codice": "",
+                    "Note": ""
+                }])], ignore_index=True)
+                update_score()
+                st.session_state.service_team = "B"
+            else:
+                st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
+                    "Set": st.session_state.current_set,
+                    "PointNo": len(st.session_state.raw) + 1,
+                    "Team": "A",
+                    "Giocatore": "Evento Generale",
+                    "Azione": "Errore avversario",
+                    "Codice": "",
+                    "Note": ""
+                }])], ignore_index=True)
+                update_score()
+                if st.session_state.service_team != "A":
+                    rotate_team_positions()
+                    st.session_state.service_team = "A"
+
+            st.session_state.selected_player = None
+            st.session_state.selected_action = None
+            safe_rerun()
+
+# --- Scelta esito fondamentale ---
 if st.session_state.selected_player and st.session_state.selected_action:
     st.markdown("---")
     action = st.session_state.selected_action
-    #st.subheader(f"{st.session_state.selected_player} · {action} → scegli lo Score")
     codes = ACTION_CODES[action]
     cols_codes = st.columns(len(codes))
     for i, code in enumerate(codes):
@@ -364,20 +354,16 @@ if st.session_state.selected_player and st.session_state.selected_action:
             st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
             update_score()
 
-            # --- Logica corretta rally point system ---
             if action in ["ATK","BAT","MU"] and code == "Punto":
                 if st.session_state.service_team == "A":
-                    pass  # la mia squadra serve già, nessuna rotazione
+                    pass
                 else:
-                    # la mia squadra guadagna servizio → ruota
                     rotate_team_positions()
                     st.session_state.service_team = "A"
             elif action in ["ATK","BAT","MU"] and code == "Errore":
-                # punto avversario
                 if st.session_state.service_team == "B":
-                    pass  # gli avversari già servono
+                    pass
                 else:
-                    # gli avversari guadagnano servizio
                     st.session_state.service_team = "B"
 
             st.session_state.selected_action = None
