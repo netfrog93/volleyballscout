@@ -247,7 +247,6 @@ def events_block():
 
     # Mostra i pulsanti solo se la formazione è completa
     if any(v in [None, ""] for v in st.session_state.positions.values()):
-        st.info("Completa la formazione per abilitare i pulsanti di gioco.")
         return
 
     extra_cols = st.columns(3)
