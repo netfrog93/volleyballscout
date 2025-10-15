@@ -244,11 +244,6 @@ def field_block():
 # =========================================================
 def events_block():
     update_score()
-
-    # Mostra i pulsanti solo se la formazione è completa
-    if any(v in [None, ""] for v in st.session_state.positions.values()):
-        return
-
     extra_cols = st.columns(3)
 
     if extra_cols[0].button("Avversari", use_container_width=True):
@@ -410,7 +405,9 @@ def main():
     init_session_state()
     sidebar_block()
     field_block()
-    events_block()
+    # Mostra il blocco eventi solo se la formazione è completa
+    if all(v not in [None, ""] for v in st.session_state.positions.values()):
+        events_block()
     recorded_block()
     stats_block()
 
