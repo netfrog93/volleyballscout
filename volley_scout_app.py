@@ -271,30 +271,30 @@ if all(v not in [None, ""] for v in st.session_state.positions.values()):
             st.session_state.selected_action = None
             safe_rerun()
 
-extra_cols = st.columns(3)
-
-# --- Bottone Avversari ---
-if extra_cols[0].button("Avversari", use_container_width=True, type="secondary"):
-    st.session_state.selected_player = "Avversari"
-    st.session_state.selected_action = None
-    safe_rerun()
-
-# --- Errore squadra ---
-if extra_cols[2].button("Errore squadra", use_container_width=True):
-    rot = get_palleggiatrice_posizione()
-    st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
-        "Set": st.session_state.current_set,
-        "PointNo": len(st.session_state.raw) + 1,
-        "Team": "B",
-        "Giocatore": "Evento Generale",
-        "Azione": "Errore squadra",
-        "Codice": "",
-        "Note": "",
-        "Rotazione": rot if "A" == "A" else ""
-    }])], ignore_index=True)
-    update_score()
-    st.session_state.service_team = "B"
-    safe_rerun()
+    extra_cols = st.columns(3)
+    
+    # --- Bottone Avversari ---
+    if extra_cols[0].button("Avversari", use_container_width=True, type="secondary"):
+        st.session_state.selected_player = "Avversari"
+        st.session_state.selected_action = None
+        safe_rerun()
+    
+    # --- Errore squadra ---
+    if extra_cols[2].button("Errore squadra", use_container_width=True):
+        rot = get_palleggiatrice_posizione()
+        st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
+            "Set": st.session_state.current_set,
+            "PointNo": len(st.session_state.raw) + 1,
+            "Team": "B",
+            "Giocatore": "Evento Generale",
+            "Azione": "Errore squadra",
+            "Codice": "",
+            "Note": "",
+            "Rotazione": rot if "A" == "A" else ""
+        }])], ignore_index=True)
+        update_score()
+        st.session_state.service_team = "B"
+        safe_rerun()
 
 else:
     st.info("Imposta tutti i giocatori nelle posizioni per iniziare.")
