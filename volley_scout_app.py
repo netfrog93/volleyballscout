@@ -178,6 +178,10 @@ st.session_state.positions["Libero"] = st.sidebar.selectbox(
     key="pos_libero"
 )
 
+# --- Pulsante per aggiornare manualmente la formazione ---
+if st.sidebar.button("Aggiorna formazione"):
+    safe_rerun()
+
 # Verifica formazione
 if any(v in [None, ""] for v in st.session_state.positions.values()):
     st.sidebar.warning("Completa la formazione (posizioni 1–6 + Libero).")
