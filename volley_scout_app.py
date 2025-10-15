@@ -281,7 +281,7 @@ if st.session_state.get("show_avversari", False):
     sub_cols = st.columns(2)
 
     # --- Punto avversario ---
-    if sub_cols[0].button("Punto", use_container_width=True, type="primary"):
+    if sub_cols[0].button("Punto", use_container_width=True, type="secondary"):
         st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
             "Set": st.session_state.current_set,
             "PointNo": len(st.session_state.raw) + 1,
@@ -298,7 +298,7 @@ if st.session_state.get("show_avversari", False):
         safe_rerun()
 
     # --- Errore avversario ---
-    if sub_cols[1].button("Errore", use_container_width=True, type="primary"):
+    if sub_cols[1].button("Errore", use_container_width=True, type="secondary"):
         st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
             "Set": st.session_state.current_set,
             "PointNo": len(st.session_state.raw) + 1,
