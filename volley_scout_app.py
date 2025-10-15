@@ -77,7 +77,7 @@ def df_to_excel_bytes(df, sheet_name="Roster"):
 if "players" not in st.session_state:
     st.session_state.players = default_roster_df()
 if "raw" not in st.session_state:
-    st.session_state.raw = pd.DataFrame(columns=["Set","PointNo","Team","Giocatore","Azione","Codice","Note"])
+    st.session_state.raw = pd.DataFrame(columns=["Set","PointNo","Team","Giocatore","Azione","Codice","Note","Rotazione"])
 if "current_set" not in st.session_state:
     st.session_state.current_set = 1
 if "positions" not in st.session_state:
@@ -99,7 +99,7 @@ if "service_team" not in st.session_state:
 # ==============
 st.sidebar.header("Impostazioni partita")
 
-# ---- Roster (upload + template) ----
+# ---- Roster ----
 st.sidebar.subheader("Roster")
 uploaded_roster = st.sidebar.file_uploader(
     "Carica roster.xlsx (colonne richieste: Numero, Nome, Ruolo)",
@@ -133,7 +133,7 @@ st.session_state.current_set = st.sidebar.number_input(
     "Seleziona Set", min_value=1, max_value=SETS, value=st.session_state.current_set, step=1
 )
 
-# ---- Chi inizia al servizio ----
+# ---- Servizio iniziale ----
 st.sidebar.subheader("Servizio iniziale")
 service_start = st.sidebar.radio(
     "Chi inizia al servizio?",
@@ -187,6 +187,17 @@ else:
 # ==============
 # Funzioni di gioco
 # ==============
+def get_palleggiatrice_posizione():
+    """Restituisce la posizione attuale della palleggiatrice (P1–P6)"""
+    palleggiatrici = st.session_state.players.query("Ruolo == 'Palleggiatrice'")["Nome"].tolist()
+    if not palleggiatrici:
+        return ""
+    palleggiatrice = palleggiatrici[0]
+    for pos, nome in st.session_state.positions.items():
+        if nome == palleggiatrice and isinstance(pos, int):
+            return f"P{pos}"
+    return ""
+
 def rotate_team_positions():
     current = st.session_state.positions
     new_positions = {
@@ -226,7 +237,8 @@ update_score()
 # =======================
 # Campo e fondamentali
 # =======================
-st.markdown(f"### 🏐 Servizio: **{st.session_state.team_names[st.session_state.service_team]}**")
+rotazione_p = get_palleggiatrice_posizione()
+st.markdown(f"### 🏐 Servizio: **{st.session_state.team_names[st.session_state.service_team]}**  ·  Rotazione: **{rotazione_p or '-'}**")
 
 if all(v not in [None, ""] for v in st.session_state.positions.values()):
     st.subheader("Disposizione in campo (posizioni 1–6)")
@@ -274,6 +286,7 @@ if extra_cols[0].button("Avversari", use_container_width=True, type="secondary")
 
 # --- Errore squadra ---
 if extra_cols[2].button("Errore squadra", use_container_width=True):
+    rot = get_palleggiatrice_posizione()
     st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
         "Set": st.session_state.current_set,
         "PointNo": len(st.session_state.raw) + 1,
@@ -281,7 +294,8 @@ if extra_cols[2].button("Errore squadra", use_container_width=True):
         "Giocatore": "Evento Generale",
         "Azione": "Errore squadra",
         "Codice": "",
-        "Note": ""
+        "Note": "",
+        "Rotazione": rot if "A" == "A" else ""
     }])], ignore_index=True)
     update_score()
     st.session_state.service_team = "B"
@@ -302,6 +316,7 @@ elif st.session_state.selected_player == "Avversari":
     cols_avv = st.columns(2)
     for i, label in enumerate(["Punto", "Errore"]):
         if cols_avv[i].button(label, key=f"avv_{label}", use_container_width=True, type="secondary"):
+            rot = get_palleggiatrice_posizione()
             if label == "Punto":
                 st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([{
                     "Set": st.session_state.current_set,
@@ -310,7 +325,8 @@ elif st.session_state.selected_player == "Avversari":
                     "Giocatore": "Evento Generale",
                     "Azione": "Punto avversario",
                     "Codice": "",
-                    "Note": ""
+                    "Note": "",
+                    "Rotazione": ""
                 }])], ignore_index=True)
                 update_score()
                 st.session_state.service_team = "B"
@@ -322,7 +338,8 @@ elif st.session_state.selected_player == "Avversari":
                     "Giocatore": "Evento Generale",
                     "Azione": "Errore avversario",
                     "Codice": "",
-                    "Note": ""
+                    "Note": "",
+                    "Rotazione": rot
                 }])], ignore_index=True)
                 update_score()
                 if st.session_state.service_team != "A":
@@ -341,6 +358,7 @@ if st.session_state.selected_player and st.session_state.selected_action:
     cols_codes = st.columns(len(codes))
     for i, code in enumerate(codes):
         if cols_codes[i].button(code, key=f"code_{st.session_state.selected_player}_{action}_{code}", use_container_width=True):
+            rot = get_palleggiatrice_posizione()
             new_row = {
                 "Set": st.session_state.current_set,
                 "PointNo": len(st.session_state.raw) + 1,
@@ -348,7 +366,8 @@ if st.session_state.selected_player and st.session_state.selected_action:
                 "Giocatore": st.session_state.selected_player,
                 "Azione": action,
                 "Codice": code,
-                "Note": ""
+                "Note": "",
+                "Rotazione": rot
             }
             st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
             update_score()
@@ -378,7 +397,7 @@ if not st.session_state.raw.empty:
         cols = st.columns([4,1])
         cols[0].write(
             f"{row['Set']}  {row['PointNo']}  {st.session_state.team_names[row['Team']]}  "
-            f"{row['Giocatore']}  {row['Azione']}  {row['Codice']}  {row['Note']}"
+            f"{row['Giocatore']}  {row['Azione']}  {row['Codice']}  {row['Rotazione']}"
         )
         if cols[1].button("Elimina", key=f"del_{idx}", use_container_width=True):
             st.session_state.raw.drop(idx, inplace=True)
