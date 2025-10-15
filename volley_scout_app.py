@@ -77,7 +77,7 @@ def df_to_excel_bytes(df, sheet_name="Roster"):
 if "players" not in st.session_state:
     st.session_state.players = default_roster_df()
 if "raw" not in st.session_state:
-    st.session_state.raw = pd.DataFrame(columns=["Set","PointNo","Team","Giocatore","Azione","Codice","Note","Rotazione"])
+    st.session_state.raw = pd.DataFrame(columns=["Set","PointNo","Team","Giocatore","Azione","Codice","Rotazione"])
 if "current_set" not in st.session_state:
     st.session_state.current_set = 1
 if "positions" not in st.session_state:
@@ -289,7 +289,6 @@ if all(v not in [None, ""] for v in st.session_state.positions.values()):
             "Giocatore": "Evento Generale",
             "Azione": "Errore squadra",
             "Codice": "",
-            "Note": "",
             "Rotazione": rot if "A" == "A" else ""
         }])], ignore_index=True)
         update_score()
@@ -328,8 +327,7 @@ elif st.session_state.selected_player == "Avversari":
                     "Giocatore": "Evento Generale",
                     "Azione": "Punto avversario",
                     "Codice": "",
-                    "Note": "",
-                    "Rotazione": ""
+                    "Rotazione": rot
                 }])], ignore_index=True)
                 update_score()
                 st.session_state.service_team = "B"
@@ -341,7 +339,6 @@ elif st.session_state.selected_player == "Avversari":
                     "Giocatore": "Evento Generale",
                     "Azione": "Errore avversario",
                     "Codice": "",
-                    "Note": "",
                     "Rotazione": rot
                 }])], ignore_index=True)
                 update_score()
@@ -369,7 +366,6 @@ if st.session_state.selected_player and st.session_state.selected_action:
                 "Giocatore": st.session_state.selected_player,
                 "Azione": action,
                 "Codice": code,
-                "Note": "",
                 "Rotazione": rot
             }
             st.session_state.raw = pd.concat([st.session_state.raw, pd.DataFrame([new_row])], ignore_index=True)
