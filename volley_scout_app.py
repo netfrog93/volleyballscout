@@ -408,8 +408,8 @@ def main():
     # Mostra il blocco eventi solo se la formazione è completa
     if all(v not in [None, ""] for v in st.session_state.positions.values()):
         events_block()
-    recorded_block()
-    stats_block()
+        recorded_block()
+        stats_block()
 
 if __name__ == "__main__":
     main()
